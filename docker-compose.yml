@@ -1,0 +1,72 @@
+version: '3.9'
+
+services:
+  management_node:
+    image: mysql/mysql-cluster
+    command: ndb_mgmd
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    volumes:
+      - ./config.ini:/etc/mysql-cluster.ini
+    ports:
+      - "1186:1186"
+
+  data_node_1:
+    image: mysql/mysql-cluster
+    command: ndbd
+    depends_on:
+      - management_node
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    volumes:
+      - data1:/usr/local/mysql/data
+
+  data_node_2:
+    image: mysql/mysql-cluster
+    command: ndbd
+    depends_on:
+      - management_node
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    volumes:
+      - data2:/usr/local/mysql/data
+
+  central_node:
+    image: mysql/mysql-cluster
+    command: mysqld
+    depends_on:
+      - data_node_1
+      - data_node_2
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=all_movies
+    ports:
+      - "3306:3306"
+
+  node_2:
+    image: mysql/mysql-cluster
+    command: mysqld
+    depends_on:
+      - data_node_1
+      - data_node_2
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=movies_before_1980
+    ports:
+      - "3307:3306"
+
+  node_3:
+    image: mysql/mysql-cluster
+    command: mysqld
+    depends_on:
+      - data_node_1
+      - data_node_2
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=movies_from_1980
+    ports:
+      - "3308:3306"
+
+volumes:
+  data1:
+  data2:
