@@ -3,7 +3,7 @@ version: '3.9'
 services:
   management_node:
     image: mysql/mysql-cluster
-    command: ndb_mgmd
+    command: ndb_mgmd --ndb-nodeid=1
     environment:
       - MYSQL_ROOT_PASSWORD=root
     volumes:
