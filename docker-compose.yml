@@ -1,4 +1,4 @@
-version: '3.9'
+version: "3.9"
 
 services:
   management_node:
@@ -7,7 +7,8 @@ services:
     environment:
       - MYSQL_ROOT_PASSWORD=root
     volumes:
-      - ./config.ini:/etc/mysql-cluster.ini
+      - ./my.ini:/etc/my.cnf
+      - ./config.ini:/etc/mysql-cluster.cnf
     ports:
       - "1186:1186"
 
@@ -19,7 +20,10 @@ services:
     environment:
       - MYSQL_ROOT_PASSWORD=root
     volumes:
+      - ./my.ini:/etc/my.cnf
+      - ./config.ini:/etc/mysql-cluster.cnf
       - data1:/usr/local/mysql/data
+      - ./data:/docker-entrypoint-initdb.d
 
   data_node_2:
     image: mysql/mysql-cluster
@@ -29,8 +33,11 @@ services:
     environment:
       - MYSQL_ROOT_PASSWORD=root
     volumes:
+      - ./my.ini:/etc/my.cnf
+      - ./config.ini:/etc/mysql-cluster.cnf
       - data2:/usr/local/mysql/data
-
+      - ./data:/docker-entrypoint-initdb.d
+      
   central_node:
     image: mysql/mysql-cluster
     command: mysqld
@@ -40,6 +47,12 @@ services:
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_DATABASE=all_movies
+      - MYSQL_USER=${DB_USERNAME}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - ./my.ini:/etc/my.cnf
+      - ./config.ini:/etc/mysql-cluster.cnf
+      - ./data/all_movies:/docker-entrypoint-initdb.d
     ports:
       - "3306:3306"
 
@@ -52,6 +65,13 @@ services:
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_DATABASE=movies_before_1980
+      - MYSQL_USER=${DB_USERNAME}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - ./my.ini:/etc/my.cnf
+      - ./config.ini:/etc/mysql-cluster.cnf
+      - ./data/movies_before_1980:/docker-entrypoint-initdb.d
+
     ports:
       - "3307:3306"
 
@@ -64,8 +84,25 @@ services:
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_DATABASE=movies_from_1980
+      - MYSQL_USER=${DB_USERNAME}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - ./my.ini:/etc/my.cnf
+      - ./config.ini:/etc/mysql-cluster.cnf
+      - ./data/movies_from_1980:/docker-entrypoint-initdb.d
     ports:
       - "3308:3306"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: express-app
+    ports:
+      - "3000:3000"
+    command: pnpm run dev
+    volumes:
+      - ./:/app
 
 volumes:
   data1:
