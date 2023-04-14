@@ -25,5 +25,17 @@ export function MovieRepository(node: Connection) {
       })
     );
   }
-  return { findAll };
+  function findByName(name: string): Promise<QueryResult> {
+    return new Promise((resolve, reject) =>
+      node.execute(
+        "SELECT * FROM movies WHERE name=?",
+        [name],
+        (err, rows, fields) => {
+          if (err) return reject(err);
+          return resolve({ rows, fields });
+        }
+      )
+    );
+  }
+  return { findAll, findByName };
 }
