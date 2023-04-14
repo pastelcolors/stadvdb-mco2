@@ -11,7 +11,7 @@ export const centralNode = {
   database: process.env.CENTRAL_NODE_DB,
 };
 
-export const node2 = {
+export const before1980Node = {
   host: process.env.NODE_2_HOST,
   port: Number(process.env.NODE_2_PORT),
   user: process.env.DB_USERNAME,
@@ -19,7 +19,7 @@ export const node2 = {
   database: process.env.NODE_2_DB,
 };
 
-export const node3 = {
+export const after1980Node = {
   host: process.env.NODE_3_HOST,
   port: Number(process.env.NODE_3_PORT),
   user: process.env.DB_USERNAME,
@@ -29,7 +29,7 @@ export const node3 = {
 
 
 export const NODE_LIST = {
-  central: centralNode,
-  node2,
-  node3,
+  centralNode,
+  before1980Node,
+  after1980Node,
 };
