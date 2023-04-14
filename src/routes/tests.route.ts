@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { createConnection } from "mysql2/promise";
 import { NODE_LIST } from "../config/db";
+import Connection from "mysql2/typings/mysql/lib/Connection";
 
 const router = Router();
 
@@ -21,6 +22,7 @@ CREATE TABLE `movies` (
 */
 
 export type ISOLATION_LEVELS = 'READ UNCOMMITTED' | 'READ COMMITTED' | 'REPEATABLE READ' | 'SERIALIZABLE';
+export type NODES = 'Central Node' | 'Before 1980 Node' | 'After 1980 Node';
 // Default Movie
 // Name: $1,000 Reward
 // Year: 1913
@@ -30,11 +32,21 @@ export type ISOLATION_LEVELS = 'READ UNCOMMITTED' | 'READ COMMITTED' | 'REPEATAB
 // Actor 3: Crane Wilbur
 const DEFAULT_MOVIE_ID = '37b34019-d298-11ed-a5cb-00155d052813'; 
 
+// Log data structure to store the results of the tests
+interface Log {
+  status?: string;
+  node: string;
+  isolationLevel: ISOLATION_LEVELS;
+  body: any;
+  timestamp?: Date;
+}
+
 // Case #1: Concurrent transactions in two or more nodes are reading the same data item.
 router.post('/case1', async (req, res) => {
   const centralNode = await createConnection(NODE_LIST.centralNode);
   const before1980Node = await createConnection(NODE_LIST.before1980Node);
   const after1980Node = await createConnection(NODE_LIST.after1980Node);
+  const log: Log[] = [];
 
   // Get isolation level set via query string
   const ISOLATION_LEVEL_SELECTED = req.query.isolationLevel as ISOLATION_LEVELS ?? 'READ UNCOMMITTED';
@@ -53,23 +65,51 @@ router.post('/case1', async (req, res) => {
 
     // Implement the logic for Case #1 here
     // Select movies from central node, where id = MOVIE_ID
-    const [centralMovieSelected] = await centralNode.query('SELECT * FROM movies WHERE id = ?', [MOVIE_ID]);
-    console.log('Central node: ', centralMovieSelected);
+
+    const queryPromises = [
+      centralNode.query('SELECT * FROM movies WHERE id = ?', [MOVIE_ID]),
+      before1980Node.query('SELECT * FROM movies WHERE id = ?', [MOVIE_ID]),
+      after1980Node.query('SELECT * FROM movies WHERE id = ?', [MOVIE_ID]),
+    ];
+
+    const [centralMovieSelected, before1980MovieSelected, after1980MovieSelected] = await Promise.all(queryPromises);
+
+    log.push({
+      status: 'Selected movie from central node',
+      node: 'Central Node',
+      isolationLevel: ISOLATION_LEVEL_SELECTED,
+      body: centralMovieSelected,
+      timestamp: new Date(),
+    });
 
     // Select movies from node 2, where id = MOVIE_ID
-    const [node2MovieSelected] = await before1980Node.query('SELECT * FROM movies WHERE id = ?', [MOVIE_ID]);
-    console.log('Node 2: ', node2MovieSelected);
+    log.push({
+      status: 'Selected movie from before 1980 node',
+      node: 'Before 1980 Node',
+      isolationLevel: ISOLATION_LEVEL_SELECTED,
+      body: before1980MovieSelected,
+      timestamp: new Date(),
+    });
 
     // Select movies from node 3, where id = MOVIE_ID
-    const [node3MovieSelected] = await after1980Node.query('SELECT * FROM movies WHERE id = ?', [MOVIE_ID]);
-    console.log('Node 3: ', node3MovieSelected);
+    log.push({
+      status: 'Selected movie from after 1980 node',
+      node: 'After 1980 Node',
+      isolationLevel: ISOLATION_LEVEL_SELECTED,
+      body: after1980MovieSelected,
+      timestamp: new Date(),
+    });
 
-    // Commit transactions for each node
-    await centralNode.commit();
-    await before1980Node.commit();
-    await after1980Node.commit();
+    // Commit promises for each node
+    const commitPromises = [
+      centralNode.commit(),
+      before1980Node.commit(),
+      after1980Node.commit(),
+    ];
 
-    res.sendStatus(200);
+    await Promise.all(commitPromises);
+
+    res.status(200).send(log);
   } catch (err) {
     // Rollback transactions for each node in case of error
     await centralNode.rollback();
@@ -82,59 +122,93 @@ router.post('/case1', async (req, res) => {
 
 // Case #2: At least one transaction in the three nodes is writing (update / delete) and the other concurrent transactions are reading the same data item.
 router.post('/case2', async (req, res) => {
-  const central = await createConnection(NODE_LIST.centralNode);
+  const centralNode = await createConnection(NODE_LIST.centralNode);
   const before1980Node = await createConnection(NODE_LIST.before1980Node);
   const after1980Node = await createConnection(NODE_LIST.after1980Node);
+  const log: Log[] = [];
 
   // Get isolation level set via query string
-  const ISOLATION_LEVEL_SELECTED = req.query.isolationLevel;
+  const ISOLATION_LEVEL_SELECTED = req.query.isolationLevel as ISOLATION_LEVELS ?? 'READ UNCOMMITTED';
   const MOVIE_ID = req.query.movieId ?? DEFAULT_MOVIE_ID;
+  const UPDATER_NODE: NODES = req.query.updaterNode as NODES ?? 'Central Node';
 
   try {
     // Simulate the case where node 2 is updating the movie
     // Set isolation level for each node
-
-    await central.query('SET TRANSACTION ISOLATION LEVEL ' + ISOLATION_LEVEL_SELECTED);
+    await centralNode.query('SET TRANSACTION ISOLATION LEVEL ' + ISOLATION_LEVEL_SELECTED);
     await before1980Node.query('SET TRANSACTION ISOLATION LEVEL ' + ISOLATION_LEVEL_SELECTED);
     await after1980Node.query('SET TRANSACTION ISOLATION LEVEL ' + ISOLATION_LEVEL_SELECTED);
 
     // Begin transactions for each node
-    await central.beginTransaction();
+    await centralNode.beginTransaction();
     await before1980Node.beginTransaction();
     await after1980Node.beginTransaction();
 
-    // Implement the logic for Case #2 here
-    // Select movies from central node, where id = MOVIE_ID
-    const [centralMovieSelected] = await central.query('SELECT * FROM movies WHERE id = ?', [MOVIE_ID]);
+    const queryPromises = [];
 
-    // Select movies from node 2, where id = MOVIE_ID
-    const [node2MovieSelected] = await before1980Node.query('SELECT * FROM movies WHERE id = ?', [MOVIE_ID]);
+    // Update movie
+    if (UPDATER_NODE === 'Central Node') {
+      queryPromises.push(centralNode.query('UPDATE movies SET title = ? WHERE id = ?', ['Updated Title', MOVIE_ID]));
+    } else if (UPDATER_NODE === 'Before 1980 Node') {
+      queryPromises.push(before1980Node.query('UPDATE movies SET title = ? WHERE id = ?', ['Updated Title', MOVIE_ID]));
+    } else if (UPDATER_NODE === 'After 1980 Node') {
+      queryPromises.push(after1980Node.query('UPDATE movies SET title = ? WHERE id = ?', ['Updated Title', MOVIE_ID]));
+    }
 
-    // Select movies from node 3, where id = MOVIE_ID
-    const [node3MovieSelected] = await after1980Node.query('SELECT * FROM movies WHERE id = ?', [MOVIE_ID]);
-
-    // Update movie in node 2
-    await before1980Node.query('UPDATE movies SET name = ? WHERE id = ?', ['Bogus Movie', MOVIE_ID]);
+    // Get the updated movie from all nodes
+    queryPromises.push(centralNode.query('SELECT * FROM movies WHERE id = ?', [MOVIE_ID]));
+    queryPromises.push(before1980Node.query('SELECT * FROM movies WHERE id = ?', [MOVIE_ID]));
+    queryPromises.push(after1980Node.query('SELECT * FROM movies WHERE id = ?', [MOVIE_ID]));
 
     // Commit transactions for each node
-    await central.commit();
-    await before1980Node.commit();
-    await after1980Node.commit();
+    const [movieUpdated, before1980MovieSelected, centralMovieSelected, after1980MovieSelected] = await Promise.all(queryPromises);
 
     // Review the results
-    console.log('Central node: ', centralMovieSelected);
-    console.log('Node 2: ', node2MovieSelected);
-    console.log('Node 3: ', node3MovieSelected);
+    log.push({
+      status: 'Updated movie from ' + UPDATER_NODE,
+      node: UPDATER_NODE,
+      isolationLevel: ISOLATION_LEVEL_SELECTED,
+      body: movieUpdated,
+      timestamp: new Date(),
+    });
 
-    // After logging, rollback transactions for each node to reset the data
-    await central.rollback();
-    await before1980Node.rollback();
-    await after1980Node.rollback();
+    log.push({
+      status: 'Selected movie from central node',
+      node: 'Central Node',
+      isolationLevel: ISOLATION_LEVEL_SELECTED,
+      body: centralMovieSelected,
+      timestamp: new Date(),
+    });
+
+    log.push({
+      status: 'Selected movie from before 1980 node',
+      node: 'Before 1980 Node',
+      isolationLevel: ISOLATION_LEVEL_SELECTED,
+      body: before1980MovieSelected,
+      timestamp: new Date(),
+    });
+
+    log.push({
+      status: 'Selected movie from after 1980 node',
+      node: 'After 1980 Node',
+      isolationLevel: ISOLATION_LEVEL_SELECTED,
+      body: after1980MovieSelected,
+      timestamp: new Date(),
+    });
+
+    // Commit promises for each node
+    const commitPromises = [
+      centralNode.commit(),
+      before1980Node.commit(),
+      after1980Node.commit(),
+    ];
+
+    await Promise.all(commitPromises);
 
     res.sendStatus(200);
   } catch (err) {
     // Rollback transactions for each node in case of error
-    await central.rollback();
+    await centralNode.rollback();
     await before1980Node.rollback();
     await after1980Node.rollback();
 
