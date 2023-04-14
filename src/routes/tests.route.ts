@@ -78,7 +78,7 @@ router.post('/case1', async (req, res) => {
       status: 'Selected movie from central node',
       node: 'Central Node',
       isolationLevel: ISOLATION_LEVEL_SELECTED,
-      body: centralMovieSelected,
+      body: centralMovieSelected[0],
       timestamp: new Date(),
     });
 
@@ -87,7 +87,7 @@ router.post('/case1', async (req, res) => {
       status: 'Selected movie from before 1980 node',
       node: 'Before 1980 Node',
       isolationLevel: ISOLATION_LEVEL_SELECTED,
-      body: before1980MovieSelected,
+      body: before1980MovieSelected[0],
       timestamp: new Date(),
     });
 
@@ -96,7 +96,7 @@ router.post('/case1', async (req, res) => {
       status: 'Selected movie from after 1980 node',
       node: 'After 1980 Node',
       isolationLevel: ISOLATION_LEVEL_SELECTED,
-      body: after1980MovieSelected,
+      body: after1980MovieSelected[0],
       timestamp: new Date(),
     });
 
@@ -116,7 +116,7 @@ router.post('/case1', async (req, res) => {
     await before1980Node.rollback();
     await after1980Node.rollback();
 
-    res.status(500).send(err.message);
+    res.status(500).send(err);
   }
 });
 
@@ -168,7 +168,7 @@ router.post('/case2', async (req, res) => {
       status: 'Updated movie from ' + UPDATER_NODE,
       node: UPDATER_NODE,
       isolationLevel: ISOLATION_LEVEL_SELECTED,
-      body: movieUpdated,
+      body: movieUpdated[0],
       timestamp: new Date(),
     });
 
@@ -176,7 +176,7 @@ router.post('/case2', async (req, res) => {
       status: 'Selected movie from central node',
       node: 'Central Node',
       isolationLevel: ISOLATION_LEVEL_SELECTED,
-      body: centralMovieSelected,
+      body: centralMovieSelected[0],
       timestamp: new Date(),
     });
 
@@ -184,7 +184,7 @@ router.post('/case2', async (req, res) => {
       status: 'Selected movie from before 1980 node',
       node: 'Before 1980 Node',
       isolationLevel: ISOLATION_LEVEL_SELECTED,
-      body: before1980MovieSelected,
+      body: before1980MovieSelected[0],
       timestamp: new Date(),
     });
 
@@ -192,7 +192,7 @@ router.post('/case2', async (req, res) => {
       status: 'Selected movie from after 1980 node',
       node: 'After 1980 Node',
       isolationLevel: ISOLATION_LEVEL_SELECTED,
-      body: after1980MovieSelected,
+      body: after1980MovieSelected[0],
       timestamp: new Date(),
     });
 
@@ -212,7 +212,7 @@ router.post('/case2', async (req, res) => {
     await before1980Node.rollback();
     await after1980Node.rollback();
 
-    res.status(500).send(err.message);
+    res.status(500).send(err);
   }
 
   res.sendStatus(200);
