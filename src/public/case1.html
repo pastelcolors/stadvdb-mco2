@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Case 1</title>
+  </head>
+  <body>
+    <!--
+    node
+    isolation level
+    body
+  -->
+    <div class="container mx-auto">
+      <h1 class="text-5xl font-bold">Case 1</h1>
+      <section>
+        <h2 class="text-xl mt-5 mb-3">Select Nodes</h2>
+        <div>
+          <div class="flex items-center mb-4">
+            <input
+              id="central-node"
+              type="checkbox"
+              value=""
+              class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <label for="central-node" class="ml-2 text-sm font-medium"
+              >Central node</label
+            >
+          </div>
+          <div class="flex items-center mb-4">
+            <input
+              id="movies-before-1980"
+              type="checkbox"
+              value=""
+              class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <label for="movies-before-1980" class="ml-2 text-sm font-medium"
+              >Movies before 1980</label
+            >
+          </div>
+          <div class="flex items-center">
+            <input
+              id="movies-from-1980"
+              type="checkbox"
+              value=""
+              class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <label for="movies-from-1980" class="ml-2 text-sm font-medium"
+              >Movies from 1980</label
+            >
+          </div>
+        </div>
+      </section>
+      <section class="my-10">
+        <h2 class="text-xl mb-3">Isolation Level</h2>
+        <div class="relative max-w-xs">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="absolute top-0 bottom-0 w-6 h-6 my-auto text-gray-400 right-2.5"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fillRule="evenodd"
+              d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+              clipRule="evenodd"
+            />
+          </svg>
+          <select
+            class="w-full p-2.5 text-gray-500 bg-white border rounded-md shadow-sm outline-none appearance-none focus:border-indigo-600"
+          >
+            <option>READ UNCOMMITTED</option>
+            <option>READ COMMITTED</option>
+            <option>REPEATABLE READ</option>
+            <option>SERIALIZABLE</option>
+          </select>
+        </div>
+      </section>
+      <section class="flex flex-col gap-10">
+        <h2 class="text-xl mb-5">Logs</h2>
+
+        <div class="relative overflow-x-auto">
+          <p>Node: Central Node</p>
+          <p>Isolation Level: SERIALIZABLE</p>
+          <table class="w-full text-sm text-left text-gray-500">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+              <tr>
+                <th scope="col" class="px-6 py-3">Movie id</th>
+                <th scope="col" class="px-6 py-3">Movie name</th>
+                <th scope="col" class="px-6 py-3">Year</th>
+                <th scope="col" class="px-6 py-3">Rank</th>
+                <th scope="col" class="px-6 py-3">Actor 1</th>
+                <th scope="col" class="px-6 py-3">Actor 2</th>
+                <th scope="col" class="px-6 py-3">Actor 3</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="bg-white border-b">
+                <th
+                  scope="row"
+                  class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"
+                >
+                  1
+                </th>
+                <td class="px-6 py-4">Movie 1</td>
+                <td class="px-6 py-4">2020</td>
+                <td class="px-6 py-4">10</td>
+                <td class="px-6 py-4">Actor 1</td>
+                <td class="px-6 py-4">Actor 2</td>
+                <td class="px-6 py-4">Actor 3</td>
+              </tr>
+              <tr class="bg-white border-b">
+                <th
+                  scope="row"
+                  class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"
+                >
+                  1
+                </th>
+                <td class="px-6 py-4">Movie 1</td>
+                <td class="px-6 py-4">2020</td>
+                <td class="px-6 py-4">10</td>
+                <td class="px-6 py-4">Actor 1</td>
+                <td class="px-6 py-4">Actor 2</td>
+                <td class="px-6 py-4">Actor 3</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="relative overflow-x-auto">
+          <p>Node: After 1980</p>
+          <p>Isolation Level: SERIALIZABLE</p>
+          <table class="w-full text-sm text-left text-gray-500">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+              <tr>
+                <th scope="col" class="px-6 py-3">Movie id</th>
+                <th scope="col" class="px-6 py-3">Movie name</th>
+                <th scope="col" class="px-6 py-3">Year</th>
+                <th scope="col" class="px-6 py-3">Rank</th>
+                <th scope="col" class="px-6 py-3">Actor 1</th>
+                <th scope="col" class="px-6 py-3">Actor 2</th>
+                <th scope="col" class="px-6 py-3">Actor 3</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="bg-white border-b">
+                <th
+                  scope="row"
+                  class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"
+                >
+                  1
+                </th>
+                <td class="px-6 py-4">Movie 1</td>
+                <td class="px-6 py-4">2020</td>
+                <td class="px-6 py-4">10</td>
+                <td class="px-6 py-4">Actor 1</td>
+                <td class="px-6 py-4">Actor 2</td>
+                <td class="px-6 py-4">Actor 3</td>
+              </tr>
+              <tr class="bg-white border-b">
+                <th
+                  scope="row"
+                  class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"
+                >
+                  1
+                </th>
+                <td class="px-6 py-4">Movie 1</td>
+                <td class="px-6 py-4">2020</td>
+                <td class="px-6 py-4">10</td>
+                <td class="px-6 py-4">Actor 1</td>
+                <td class="px-6 py-4">Actor 2</td>
+                <td class="px-6 py-4">Actor 3</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>
