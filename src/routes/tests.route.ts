@@ -83,8 +83,8 @@ router.post('/case1', async (req, res) => {
 // Case #2: At least one transaction in the three nodes is writing (update / delete) and the other concurrent transactions are reading the same data item.
 router.post('/case2', async (req, res) => {
   const central = await createConnection(NODE_LIST.centralNode);
-  const node2 = await createConnection(NODE_LIST.before1980Node);
-  const node3 = await createConnection(NODE_LIST.after1980Node);
+  const before1980Node = await createConnection(NODE_LIST.before1980Node);
+  const after1980Node = await createConnection(NODE_LIST.after1980Node);
 
   // Get isolation level set via query string
   const ISOLATION_LEVEL_SELECTED = req.query.isolationLevel;
@@ -95,31 +95,31 @@ router.post('/case2', async (req, res) => {
     // Set isolation level for each node
 
     await central.query('SET TRANSACTION ISOLATION LEVEL ' + ISOLATION_LEVEL_SELECTED);
-    await node2.query('SET TRANSACTION ISOLATION LEVEL ' + ISOLATION_LEVEL_SELECTED);
-    await node3.query('SET TRANSACTION ISOLATION LEVEL ' + ISOLATION_LEVEL_SELECTED);
+    await before1980Node.query('SET TRANSACTION ISOLATION LEVEL ' + ISOLATION_LEVEL_SELECTED);
+    await after1980Node.query('SET TRANSACTION ISOLATION LEVEL ' + ISOLATION_LEVEL_SELECTED);
 
     // Begin transactions for each node
     await central.beginTransaction();
-    await node2.beginTransaction();
-    await node3.beginTransaction();
+    await before1980Node.beginTransaction();
+    await after1980Node.beginTransaction();
 
     // Implement the logic for Case #2 here
     // Select movies from central node, where id = MOVIE_ID
     const [centralMovieSelected] = await central.query('SELECT * FROM movies WHERE id = ?', [MOVIE_ID]);
 
     // Select movies from node 2, where id = MOVIE_ID
-    const [node2MovieSelected] = await node2.query('SELECT * FROM movies WHERE id = ?', [MOVIE_ID]);
+    const [node2MovieSelected] = await before1980Node.query('SELECT * FROM movies WHERE id = ?', [MOVIE_ID]);
 
     // Select movies from node 3, where id = MOVIE_ID
-    const [node3MovieSelected] = await node3.query('SELECT * FROM movies WHERE id = ?', [MOVIE_ID]);
+    const [node3MovieSelected] = await after1980Node.query('SELECT * FROM movies WHERE id = ?', [MOVIE_ID]);
 
     // Update movie in node 2
-    await node2.query('UPDATE movies SET name = ? WHERE id = ?', ['Bogus Movie', MOVIE_ID]);
+    await before1980Node.query('UPDATE movies SET name = ? WHERE id = ?', ['Bogus Movie', MOVIE_ID]);
 
     // Commit transactions for each node
     await central.commit();
-    await node2.commit();
-    await node3.commit();
+    await before1980Node.commit();
+    await after1980Node.commit();
 
     // Review the results
     console.log('Central node: ', centralMovieSelected);
@@ -128,15 +128,15 @@ router.post('/case2', async (req, res) => {
 
     // After logging, rollback transactions for each node to reset the data
     await central.rollback();
-    await node2.rollback();
-    await node3.rollback();
+    await before1980Node.rollback();
+    await after1980Node.rollback();
 
     res.sendStatus(200);
   } catch (err) {
     // Rollback transactions for each node in case of error
     await central.rollback();
-    await node2.rollback();
-    await node3.rollback();
+    await before1980Node.rollback();
+    await after1980Node.rollback();
 
     res.status(500).send(err.message);
   }
