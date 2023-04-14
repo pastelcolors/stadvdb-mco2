@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { centralNode, before1980Node, after1980Node } from "../config/db";
 import { createConnection } from "mysql2/promise";
 import { NODE_LIST } from "../config/db";
 
@@ -144,3 +143,5 @@ router.post('/case2', async (req, res) => {
 
   res.sendStatus(200);
 });
+
+export default router;
