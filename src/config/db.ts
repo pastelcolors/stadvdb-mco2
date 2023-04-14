@@ -1,5 +1,4 @@
 import * as dotenv from "dotenv";
-import { createConnection } from "mysql2";
 
 dotenv.config();
 
@@ -26,7 +25,6 @@ export const after1980Node = {
   password: process.env.DB_PASSWORD,
   database: process.env.NODE_3_DB,
 };
-
 
 export const NODE_LIST = {
   centralNode,
