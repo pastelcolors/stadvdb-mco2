@@ -1,8 +1,9 @@
 import * as dotenv from "dotenv";
+import { Pool, createPool } from "mysql2/promise";
 
 dotenv.config();
 
-export const centralNode = {
+export const centralNodeConfig = {
   host: process.env.CENTRAL_NODE_HOST,
   port: Number(process.env.CENTRAL_NODE_PORT),
   user: process.env.DB_USERNAME,
@@ -10,7 +11,7 @@ export const centralNode = {
   database: process.env.CENTRAL_NODE_DB,
 };
 
-export const before1980Node = {
+export const before1980NodeConfig = {
   host: process.env.NODE_2_HOST,
   port: Number(process.env.NODE_2_PORT),
   user: process.env.DB_USERNAME,
@@ -18,7 +19,7 @@ export const before1980Node = {
   database: process.env.NODE_2_DB,
 };
 
-export const after1980Node = {
+export const after1980NodeConfig = {
   host: process.env.NODE_3_HOST,
   port: Number(process.env.NODE_3_PORT),
   user: process.env.DB_USERNAME,
@@ -27,7 +28,11 @@ export const after1980Node = {
 };
 
 export const NODE_LIST = {
-  centralNode,
-  before1980Node,
-  after1980Node,
+  centralNodeConfig,
+  before1980NodeConfig,
+  after1980NodeConfig,
 };
+
+export const centralNodePool: Pool = createPool(NODE_LIST.centralNodeConfig);
+export const before1980NodePool: Pool = createPool(NODE_LIST.before1980NodeConfig);
+export const after1980NodePool: Pool = createPool(NODE_LIST.after1980NodeConfig);

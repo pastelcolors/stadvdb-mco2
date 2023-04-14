@@ -1,49 +1,9 @@
 version: "3.9"
 
 services:
-  management_node:
-    image: mysql/mysql-cluster
-    command: ndb_mgmd --ndb-nodeid=1
-    environment:
-      - MYSQL_ROOT_PASSWORD=root
-    volumes:
-      - ./my.ini:/etc/my.cnf
-      - ./config.ini:/etc/mysql-cluster.cnf
-    ports:
-      - "1186:1186"
-
-  data_node_1:
-    image: mysql/mysql-cluster
-    command: ndbd
-    depends_on:
-      - management_node
-    environment:
-      - MYSQL_ROOT_PASSWORD=root
-    volumes:
-      - ./my.ini:/etc/my.cnf
-      - ./config.ini:/etc/mysql-cluster.cnf
-      - data1:/usr/local/mysql/data
-      - ./data:/docker-entrypoint-initdb.d
-
-  data_node_2:
-    image: mysql/mysql-cluster
-    command: ndbd
-    depends_on:
-      - management_node
-    environment:
-      - MYSQL_ROOT_PASSWORD=root
-    volumes:
-      - ./my.ini:/etc/my.cnf
-      - ./config.ini:/etc/mysql-cluster.cnf
-      - data2:/usr/local/mysql/data
-      - ./data:/docker-entrypoint-initdb.d
-      
   central_node:
     image: mysql/mysql-cluster
     command: mysqld
-    depends_on:
-      - data_node_1
-      - data_node_2
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_DATABASE=all_movies
@@ -59,9 +19,6 @@ services:
   node_2:
     image: mysql/mysql-cluster
     command: mysqld
-    depends_on:
-      - data_node_1
-      - data_node_2
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_DATABASE=movies_before_1980
@@ -78,9 +35,6 @@ services:
   node_3:
     image: mysql/mysql-cluster
     command: mysqld
-    depends_on:
-      - data_node_1
-      - data_node_2
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_DATABASE=movies_from_1980
