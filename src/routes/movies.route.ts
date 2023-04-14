@@ -1,18 +1,19 @@
 import { Router } from "express";
-import { centralNode, node2, node3 } from "../config/db";
-
-
-const NODE_LIST = {
-  central: centralNode,
-  node2,
-  node3,
-};
+import { NODE_LIST } from "../config/db";
+import { createConnection } from "mysql2/promise";
+import { REFUSED } from "dns";
 
 const router = Router();
 
-router.get("/case-1", async(req,res)=>{
-  
-})
+router.post("/case-1", async (req, res) => {
+  const nodeConfig = NODE_LIST[req.query.node as keyof typeof NODE_LIST];
+  const node = await createConnection(nodeConfig);
+  const [rows] = await node.execute("SELECT * FROM movies WHERE name=?", [
+    "$30",
+  ]);
+
+  return res.send(rows);
+});
 
 router.get("/", async (req, res) => {
   const nodeConfig = NODE_LIST[req.query.node as keyof typeof NODE_LIST];
@@ -24,12 +25,8 @@ router.get("/", async (req, res) => {
   // return res.send(rows);
 });
 
-router.get("/:movie", async (req,res) => {
-  const nodeConfig = NODE_LIST[req.query.node as keyof typeof NODE_LIST];
-
-  
-
+router.get("/:movie", async (req, res) => {
   // return res.send(rows);
-})
+});
 
 export default router;

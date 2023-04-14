@@ -26,3 +26,10 @@ export const node3 = {
   password: process.env.DB_PASSWORD,
   database: process.env.NODE_3_DB,
 };
+
+
+export const NODE_LIST = {
+  central: centralNode,
+  node2,
+  node3,
+};
