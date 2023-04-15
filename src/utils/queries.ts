@@ -58,7 +58,7 @@ export const createMovie = async (movie: Movie) => {
     await mainConnection.commit();
     await shardConnection.commit();
 
-    return movie;
+    return {id, ...movie};
   } catch (error) {
     await mainConnection.rollback();
     await shardConnection.rollback();
@@ -151,15 +151,21 @@ export const deleteMovie = async (id: string) => {
   const after1980Connection = await after1980NodePool.getConnection();
 
   try {
-    await centralConnection.beginTransaction();
-    await before1980Connection.beginTransaction();
-    await after1980Connection.beginTransaction();
-
+    // Start phase
+    await centralConnection.query("XA START ?;", id);
+    await before1980Connection.query("XA START ?;", id);
+    await after1980Connection.query("XA START ?;", id);
+    
     // Delete the movie in all the nodes
     await centralConnection.query("DELETE FROM movies WHERE id = ?", [id]);
     await before1980Connection.query("DELETE FROM movies WHERE id = ?", [id]);
     await after1980Connection.query("DELETE FROM movies WHERE id = ?", [id]);
 
+    // End phase
+    await centralConnection.query("XA END ?;", id);
+    await before1980Connection.query("XA END ?;", id);
+    await after1980Connection.query("XA END ?;", id);
+    
     // Prepare phase
     await centralConnection.query("XA PREPARE ?;", id);
     await before1980Connection.query("XA PREPARE ?;", id);
