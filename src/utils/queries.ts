@@ -103,8 +103,10 @@ export const updateMovie = async (movie: Movie) => {
   const shardConnection = await shardPool.getConnection();
 
   try {
-    await mainConnection.beginTransaction();
-    await shardConnection.beginTransaction();
+
+    // Start phase
+    await mainConnection.query("XA START ?;", movie.id);
+    await shardConnection.query("XA START ?;", movie.id);
 
     // Update the movie in both the central node and the shard
     await mainConnection.query("UPDATE movies SET ? WHERE id = ?", [
@@ -115,6 +117,11 @@ export const updateMovie = async (movie: Movie) => {
       movie,
       movie.id,
     ]);
+
+    // End phase
+    await mainConnection.query("XA END ?;", movie.id);
+    await shardConnection.query("XA END ?;", movie.id);
+
 
     // Prepare phase
     await mainConnection.query("XA PREPARE ?;", movie.id);
