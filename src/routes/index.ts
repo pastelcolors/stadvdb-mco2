@@ -43,9 +43,9 @@ interface Log {
 
 // Case #1: Concurrent transactions in two or more nodes are reading the same data item.
 router.post('/case1', async (req, res) => {
-  const centralNode = await createConnection(NODE_LIST.centralNode);
-  const before1980Node = await createConnection(NODE_LIST.before1980Node);
-  const after1980Node = await createConnection(NODE_LIST.after1980Node);
+  const centralNode = await createConnection(NODE_LIST.centralNodeConfig);
+  const before1980Node = await createConnection(NODE_LIST.before1980NodeConfig);
+  const after1980Node = await createConnection(NODE_LIST.after1980NodeConfig);
   const log: Log[] = [];
 
   // Get isolation level set via query string
@@ -122,9 +122,9 @@ router.post('/case1', async (req, res) => {
 
 // Case #2: At least one transaction in the three nodes is writing (update / delete) and the other concurrent transactions are reading the same data item.
 router.post('/case2', async (req, res) => {
-  const centralNode = await createConnection(NODE_LIST.centralNode);
-  const before1980Node = await createConnection(NODE_LIST.before1980Node);
-  const after1980Node = await createConnection(NODE_LIST.after1980Node);
+  const centralNode = await createConnection(NODE_LIST.centralNodeConfig);
+  const before1980Node = await createConnection(NODE_LIST.before1980NodeConfig);
+  const after1980Node = await createConnection(NODE_LIST.after1980NodeConfig);
   const log: Log[] = [];
 
   // Get isolation level set via query string
