@@ -67,7 +67,7 @@ export const getMovie = async (id: string) => {
     const [node2Result] = await before1980Connection.query('SELECT * FROM movies WHERE id = ?', [id]);
     const [node3Result] = await after1980Connection.query('SELECT * FROM movies WHERE id = ?', [id]);
 
-    return centralResult[0] || node2Result[0] || node3Result[0] || null;
+    return centralResult || node2Result || node3Result || null;
   } finally {
     centralConnection.release();
     before1980Connection.release();
