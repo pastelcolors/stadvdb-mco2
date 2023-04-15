@@ -27,68 +27,64 @@ function getShard(movie: Movie): [Pool, Pool] {
   }
 }
 
+async function getConnection(pool: Pool, name: string) {
+  try {
+    return await pool.getConnection();
+  } catch (e) {
+    console.error(`Failed to connect to ${name}:`, e);
+    return null;
+  }
+}
+
 export const createMovie = async (movie: Movie) => {
   const [mainPool, shardPool] = getShard(movie);
-  const mainConnection = await mainPool.getConnection();
-  const shardConnection = await shardPool.getConnection();
+  const mainConnection = await getConnection(mainPool, "mainPool");
+  const shardConnection = await getConnection(shardPool, "shardPool");
   const id = uuidv4();
-  const phase = id.toString();
 
   try {
-    // Start phase
-    await mainConnection.query("XA START ?;", phase);
-    await shardConnection.query("XA START ?;", phase);
+    if (mainConnection) {
+      await mainConnection.query("XA START ?;", id);
+      await mainConnection.query("INSERT INTO movies SET ?", { id, ...movie });
+      await mainConnection.query("XA END ?;", id);
+      await mainConnection.query("XA PREPARE ?;", id);
+      await mainConnection.query("XA COMMIT ?;", id);
+      await mainConnection.commit();
+    }
 
-    // Insert the movie in both the central node and the shard
-    await mainConnection.query("INSERT INTO movies SET ?", { id, ...movie });
-    await shardConnection.query("INSERT INTO movies SET ?", { id, ...movie });
-
-    // End phase
-    await mainConnection.query("XA END ?;", phase);
-    await shardConnection.query("XA END ?;", phase);
-
-    // Prepare phase
-    await mainConnection.query("XA PREPARE ?;", phase);
-    await shardConnection.query("XA PREPARE ?;", phase);
-
-    // Commit phase
-    await mainConnection.query("XA COMMIT ?;", phase);
-    await shardConnection.query("XA COMMIT ?;", phase);
-
-    await mainConnection.commit();
-    await shardConnection.commit();
+    if (shardConnection) {
+      await shardConnection.query("XA START ?;", id);
+      await shardConnection.query("INSERT INTO movies SET ?", { id, ...movie });
+      await shardConnection.query("XA END ?;", id);
+      await shardConnection.query("XA PREPARE ?;", id);
+      await shardConnection.query("XA COMMIT ?;", id);
+      await shardConnection.commit();
+    }
 
     return { id, ...movie };
   } catch (error) {
-    await mainConnection.rollback();
-    await shardConnection.rollback();
+    if (mainConnection) await mainConnection.rollback();
+    if (shardConnection) await shardConnection.rollback();
     throw error;
   } finally {
-    mainConnection.release();
-    shardConnection.release();
+    if (mainConnection) mainConnection.release();
+    if (shardConnection) shardConnection.release();
   }
 };
 
 export const getMovie = async (id: string) => {
-  let centralConnection, before1980Connection, after1980Connection;
-
-  try {
-    centralConnection = await centralNodePool.getConnection();
-  } catch (e) {
-    console.error("Failed to connect to centralNodePool:", e);
-  }
-
-  try {
-    before1980Connection = await before1980NodePool.getConnection();
-  } catch (e) {
-    console.error("Failed to connect to before1980NodePool:", e);
-  }
-
-  try {
-    after1980Connection = await after1980NodePool.getConnection();
-  } catch (e) {
-    console.error("Failed to connect to after1980NodePool:", e);
-  }
+  const centralConnection = await getConnection(
+    centralNodePool,
+    "centralNodePool"
+  );
+  const before1980Connection = await getConnection(
+    before1980NodePool,
+    "before1980NodePool"
+  );
+  const after1980Connection = await getConnection(
+    after1980NodePool,
+    "after1980NodePool"
+  );
 
   try {
     const centralResult = centralConnection
@@ -120,47 +116,45 @@ export const getMovie = async (id: string) => {
 
 export const updateMovie = async (movie: Movie) => {
   const [mainPool, shardPool] = getShard(movie);
-  const mainConnection = await mainPool.getConnection();
-  const shardConnection = await shardPool.getConnection();
+  const mainConnection = await getConnection(mainPool, "mainPool");
+  const shardConnection = await getConnection(shardPool, "shardPool");
 
   try {
-    // Start phase
-    await mainConnection.query("XA START ?;", movie.id);
-    await shardConnection.query("XA START ?;", movie.id);
+    if (mainConnection) {
+      await mainConnection.query("XA START ?;", movie.id);
+      await mainConnection.query("UPDATE movies SET ? WHERE id = ?", [
+        movie,
+        movie.id,
+      ]);
+      await mainConnection.query("XA END ?;", movie.id);
+      await mainConnection.query("XA PREPARE ?;", movie.id);
+      await mainConnection.query("XA COMMIT ?;", movie.id);
+      await mainConnection.commit();
+    }
 
-    // Update the movie in both the central node and the shard
-    await mainConnection.query("UPDATE movies SET ? WHERE id = ?", [
-      movie,
-      movie.id,
-    ]);
-    await shardConnection.query("UPDATE movies SET ? WHERE id = ?", [
-      movie,
-      movie.id,
-    ]);
-
-    // End phase
-    await mainConnection.query("XA END ?;", movie.id);
-    await shardConnection.query("XA END ?;", movie.id);
-
-    // Prepare phase
-    await mainConnection.query("XA PREPARE ?;", movie.id);
-    await shardConnection.query("XA PREPARE ?;", movie.id);
-
-    // Commit phase
-    await mainConnection.query("XA COMMIT ?;", movie.id);
-    await shardConnection.query("XA COMMIT ?;", movie.id);
-
-    await mainConnection.commit();
-    await shardConnection.commit();
+    if (shardConnection) {
+      await shardConnection.query("XA START ?;", movie.id);
+      await shardConnection.query("UPDATE movies SET ? WHERE id = ?", [
+        movie,
+        movie.id,
+      ]);
+      await shardConnection.query("XA END ?;", movie.id);
+      await shardConnection.query("XA PREPARE ?;", movie.id);
+      await shardConnection.query("XA COMMIT ?;", movie.id);
+      await shardConnection.commit();
+    }
 
     return movie;
   } catch (error) {
-    await mainConnection.rollback();
-    await shardConnection.rollback();
+    if (mainConnection) await mainConnection.rollback();
+
+    if (shardConnection) await shardConnection.rollback();
+
     throw error;
   } finally {
-    mainConnection.release();
-    shardConnection.release();
+    if (mainConnection) mainConnection.release();
+
+    if (shardConnection) shardConnection.release();
   }
 };
 
