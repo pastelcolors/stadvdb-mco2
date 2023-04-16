@@ -5,6 +5,7 @@ import {
   centralNodePool,
 } from "../config/db";
 import { v4 as uuidv4 } from "uuid";
+import e, { NextFunction, Request, Response } from "express";
 
 type Movie = {
   id?: string;
@@ -17,6 +18,14 @@ type Movie = {
   actor2_last_name: string;
   actor3_first_name: string;
   actor3_last_name: string;
+};
+
+type Log = {
+  id: number;
+  operation: string;
+  value: string;
+  node: string;
+  active: string;
 };
 
 function getShard(movie: Movie): [Pool, Pool] {
@@ -36,6 +45,150 @@ async function getConnection(pool: Pool, name: string) {
   }
 }
 
+export const recoverFromLogs = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const centralConnection = await getConnection(
+    centralNodePool,
+    "centralNodePool"
+  );
+  const before1980Connection = await getConnection(
+    before1980NodePool,
+    "before1980NodePool"
+  );
+  const after1980Connection = await getConnection(
+    after1980NodePool,
+    "after1980NodePool"
+  );
+
+  try {
+    if (centralConnection) {
+      const [logs] = await centralConnection.query("SELECT * FROM logs");
+      if ((logs as Log[]).length > 0) {
+        console.log("Executing recovery from logs...");
+        for (let log of logs as Log[]) {
+          if (!log.active) continue;
+          if (log.operation === "INSERT") {
+            const movie = JSON.parse(log.value);
+
+            const node =
+              log.node === "before1980" && before1980Connection
+                ? before1980Connection
+                : log.node === "after1980" && after1980Connection
+                ? after1980Connection
+                : null;
+
+            console.log(`Recovering INSERT operation in ${log.node}...`);
+            if (node) {
+              await node.query("INSERT INTO movies SET ?", movie);
+              await centralConnection.beginTransaction();
+              await centralConnection.query(
+                "UPDATE logs SET active = ? WHERE id = ?",
+                [0, log.id]
+              );
+              await centralConnection.commit();
+              console.log(
+                `Recovery successful for INSERT operation in ${log.node}.`
+              );
+            } else {
+              console.log(
+                `Recovery failed. Node ${log.node} is not available.`
+              );
+            }
+          }
+        }
+      }
+    }
+    if (before1980Connection) {
+      const [logs] = await before1980Connection.query("SELECT * FROM logs");
+      if ((logs as Log[]).length > 0) {
+        console.log("Executing recovery from logs...");
+        for (let log of logs as Log[]) {
+          if (!log.active) continue;
+          if (log.operation === "INSERT") {
+            const movie = JSON.parse(log.value);
+
+            const node =
+              log.node === "central" && centralConnection
+                ? centralConnection
+                : null;
+
+            console.log(`Recovering INSERT operation in ${log.node}...`);
+            if (node) {
+              await node.query("INSERT INTO movies SET ?", movie);
+              await node.beginTransaction();
+              await node.query("UPDATE logs SET active = ? WHERE id = ?", [
+                0,
+                log.id,
+              ]);
+              await node.commit();
+              console.log(
+                `Recovery successful for INSERT operation in ${log.node}.`
+              );
+            } else {
+              console.log(
+                `Recovery failed. Node ${log.node} is not available.`
+              );
+            }
+          }
+        }
+      }
+    }
+
+    if (after1980Connection) {
+      const [logs] = await after1980Connection.query("SELECT * FROM logs");
+      if ((logs as Log[]).length > 0) {
+        console.log("Executing recovery from logs...");
+        for (let log of logs as Log[]) {
+          if (!log.active) continue;
+          if (log.operation === "INSERT") {
+            const movie = JSON.parse(log.value);
+
+            const node =
+              log.node === "central" && centralConnection
+                ? centralConnection
+                : null;
+
+            console.log(`Recovering INSERT operation in ${log.node}...`);
+            if (node) {
+              await node.query("INSERT INTO movies SET ?", movie);
+              node.beginTransaction();
+              node.query("UPDATE logs SET active = ? WHERE id = ?", [
+                0,
+                log.id,
+              ]);
+              node.commit();
+              console.log(
+                `Recovery successful for INSERT operation in ${log.node}.`
+              );
+            } else {
+              console.error(
+                `Recovery failed. Node ${log.node} is not available.`
+              );
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Failed to recover from logs:", e);
+  } finally {
+    if (centralConnection) {
+      // await centralConnection.query("DELETE FROM logs");
+      await centralConnection.commit();
+    }
+    if (before1980Connection) {
+      await before1980Connection.commit();
+    }
+    if (after1980Connection) {
+      await after1980Connection.commit();
+    }
+    next();
+  }
+};
+
 export const createMovie = async (movie: Movie) => {
   const [mainPool, shardPool] = getShard(movie);
   const mainConnection = await getConnection(mainPool, "mainPool");
@@ -50,6 +203,15 @@ export const createMovie = async (movie: Movie) => {
       await mainConnection.query("XA PREPARE ?;", id);
       await mainConnection.query("XA COMMIT ?;", id);
       await mainConnection.commit();
+    } else if (!mainConnection && shardConnection) {
+      const log = {
+        operation: "INSERT",
+        node: "central",
+        value: JSON.stringify({ id, ...movie }),
+      };
+      await shardConnection.beginTransaction();
+      await shardConnection.query("INSERT INTO logs SET ?", log);
+      await shardConnection.commit();
     }
 
     if (shardConnection) {
@@ -59,6 +221,15 @@ export const createMovie = async (movie: Movie) => {
       await shardConnection.query("XA PREPARE ?;", id);
       await shardConnection.query("XA COMMIT ?;", id);
       await shardConnection.commit();
+    } else if (!shardConnection && mainConnection) {
+      const log = {
+        operation: "INSERT",
+        node: movie.year >= 1980 ? "after1980" : "before1980",
+        value: JSON.stringify({ id, ...movie }),
+      };
+      await mainConnection.beginTransaction();
+      await mainConnection.query("INSERT INTO logs SET ?", log);
+      await mainConnection.commit();
     }
 
     return { id, ...movie };
