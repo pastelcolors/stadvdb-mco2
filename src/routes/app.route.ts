@@ -24,7 +24,6 @@ router.get("/movies", async (req, res) => {
     console.log("Getting movies");
     const movies = await getMovies();
     console.log("Finished getting movies");
-    console.log(movies);
     return res.status(200).send(movies);
   } catch (err) {
     console.error(err);
