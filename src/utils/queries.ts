@@ -38,9 +38,17 @@ function getShard(movie: Movie): [Pool, Pool] {
   }
 }
 
-async function getConnection(pool: Pool, name: string) {
+const CONNECTION_TIMEOUT = 10000;
+
+async function getConnection(pool: Pool, name: string, timeout: number = CONNECTION_TIMEOUT): Promise<PoolConnection | null> {
   try {
-    return await pool.getConnection();
+    const connectionPromise = pool.getConnection();
+    return await Promise.race([
+      connectionPromise,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Connection timeout")), timeout)
+      ),
+    ]) as PoolConnection;
   } catch (e) {
     console.error(`Failed to connect to ${name}:`, e);
     return null;
