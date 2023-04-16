@@ -219,8 +219,7 @@ export const createMovie = async (
   const logXid = `log-${id}`;
 
   try {
-
-    if(!mainConnection && !shardConnection) {
+    if (!mainConnection && !shardConnection) {
       throw new Error("No connection available");
     }
 
@@ -325,8 +324,8 @@ export const getMovies = async () => {
 
     // Combine and sort the results from both slave nodes
     const combinedResult = [
-      ...(before1980Result as Movie[] ?? []),
-      ...(after1980Result as Movie[] ?? []),
+      ...((before1980Result as Movie[]) ?? []),
+      ...((after1980Result as Movie[]) ?? []),
     ]
       .sort((a, b) => b.year - a.year)
       .slice(0, 10);
@@ -451,8 +450,8 @@ export const searchMovie = async (name: string) => {
       : [null];
 
     const combinedResult = [
-      ...(before1980Result as Movie[] ?? []),
-      ...(after1980Result as Movie[] ?? []),
+      ...((before1980Result as Movie[]) ?? []),
+      ...((after1980Result as Movie[]) ?? []),
     ]
       .sort((a, b) => b.year - a.year)
       .slice(0, 10);
@@ -477,6 +476,10 @@ export const updateMovie = async (
   const logXid = `log-${movie.id}`;
 
   try {
+    if (!mainConnection && !shardConnection) {
+      throw new Error("No connection available");
+    }
+    
     if (mainConnection) {
       await mainConnection.query(
         `SET TRANSACTION ISOLATION LEVEL ${IsolationLevel};`

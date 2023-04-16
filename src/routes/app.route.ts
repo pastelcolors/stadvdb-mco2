@@ -46,13 +46,17 @@ router.post("/movies", async (req, res) => {
 });
 
 router.put("/movies", async (req, res) => {
-  const movie = req.body;
-  const isolationLevel = req.query.isolationLevel ?? "REPEATABLE READ";
-  const updatedMovie = await updateMovie(
-    movie,
-    isolationLevel as IsolationLevels
-  );
-  res.status(200).send(updatedMovie);
+  try {
+    const movie = req.body;
+    const isolationLevel = req.query.isolationLevel ?? "REPEATABLE READ";
+    const updatedMovie = await updateMovie(
+      movie,
+      isolationLevel as IsolationLevels
+    );
+    res.status(200).send(updatedMovie);
+  } catch (err) {
+    res.status(500).send({ error: "Network error" });
+  }
 });
 
 router.delete("/movie/:id", async (req, res) => {
