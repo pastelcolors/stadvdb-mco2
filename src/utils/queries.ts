@@ -1,11 +1,11 @@
-import { Pool } from "mysql2/promise";
+import { Pool, PoolConnection } from "mysql2/promise";
 import {
   after1980NodePool,
   before1980NodePool,
   centralNodePool,
 } from "../config/db";
 import { v4 as uuidv4 } from "uuid";
-import e, { NextFunction, Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 
 type Movie = {
   id?: string;
@@ -45,6 +45,31 @@ async function getConnection(pool: Pool, name: string) {
   }
 }
 
+async function recover(
+  log: Log,
+  node: PoolConnection,
+  recoveredFrom: PoolConnection
+) {
+  const movie = JSON.parse(log.value);
+  switch (log.operation) {
+    case "INSERT":
+      console.log(`Recovering INSERT operation from ${log.node}...`);
+      await node.query("INSERT INTO movies SET ?", movie);
+      break;
+    case "UPDATE":
+      console.log(`Recovering UPDATE operation from ${log.node}...`);
+      await node.query("UPDATE movies SET ? WHERE id = ?", [movie, movie.id]);
+      break;
+    case "DELETE":
+      console.log(`Recovering DELETE operation from ${log.node}...`);
+      await node.query("DELETE FROM movies WHERE id = ?", [movie.id]);
+      break;
+  }
+  await recoveredFrom.query("UPDATE logs SET active = 0 WHERE id = ?", [
+    log.id,
+  ]);
+}
+
 export const recoverFromLogs = async (
   req: Request,
   res: Response,
@@ -70,33 +95,18 @@ export const recoverFromLogs = async (
         console.log("Executing recovery from logs...");
         for (let log of logs as Log[]) {
           if (!log.active) continue;
-          if (log.operation === "INSERT") {
-            const movie = JSON.parse(log.value);
 
-            const node =
-              log.node === "before1980" && before1980Connection
-                ? before1980Connection
-                : log.node === "after1980" && after1980Connection
-                ? after1980Connection
-                : null;
+          const node =
+            log.node === "before1980" && before1980Connection
+              ? before1980Connection
+              : log.node === "after1980" && after1980Connection
+              ? after1980Connection
+              : null;
 
-            console.log(`Recovering INSERT operation in ${log.node}...`);
-            if (node) {
-              await node.query("INSERT INTO movies SET ?", movie);
-              await centralConnection.beginTransaction();
-              await centralConnection.query(
-                "UPDATE logs SET active = ? WHERE id = ?",
-                [0, log.id]
-              );
-              await centralConnection.commit();
-              console.log(
-                `Recovery successful for INSERT operation in ${log.node}.`
-              );
-            } else {
-              console.log(
-                `Recovery failed. Node ${log.node} is not available.`
-              );
-            }
+          if (node) {
+            recover(log, node, centralConnection);
+          } else {
+            console.log(`Recovery failed. Node ${log.node} is not available.`);
           }
         }
       }
@@ -107,31 +117,16 @@ export const recoverFromLogs = async (
         console.log("Executing recovery from logs...");
         for (let log of logs as Log[]) {
           if (!log.active) continue;
-          if (log.operation === "INSERT") {
-            const movie = JSON.parse(log.value);
 
-            const node =
-              log.node === "central" && centralConnection
-                ? centralConnection
-                : null;
+          const node =
+            log.node === "central" && centralConnection
+              ? centralConnection
+              : null;
 
-            console.log(`Recovering INSERT operation in ${log.node}...`);
-            if (node) {
-              await node.query("INSERT INTO movies SET ?", movie);
-              await node.beginTransaction();
-              await node.query("UPDATE logs SET active = ? WHERE id = ?", [
-                0,
-                log.id,
-              ]);
-              await node.commit();
-              console.log(
-                `Recovery successful for INSERT operation in ${log.node}.`
-              );
-            } else {
-              console.log(
-                `Recovery failed. Node ${log.node} is not available.`
-              );
-            }
+          if (node) {
+            recover(log, node, before1980Connection);
+          } else {
+            console.log(`Recovery failed. Node ${log.node} is not available.`);
           }
         }
       }
@@ -143,31 +138,16 @@ export const recoverFromLogs = async (
         console.log("Executing recovery from logs...");
         for (let log of logs as Log[]) {
           if (!log.active) continue;
-          if (log.operation === "INSERT") {
-            const movie = JSON.parse(log.value);
 
-            const node =
-              log.node === "central" && centralConnection
-                ? centralConnection
-                : null;
+          const node =
+            log.node === "central" && centralConnection
+              ? centralConnection
+              : null;
 
-            console.log(`Recovering INSERT operation in ${log.node}...`);
-            if (node) {
-              await node.query("INSERT INTO movies SET ?", movie);
-              node.beginTransaction();
-              node.query("UPDATE logs SET active = ? WHERE id = ?", [
-                0,
-                log.id,
-              ]);
-              node.commit();
-              console.log(
-                `Recovery successful for INSERT operation in ${log.node}.`
-              );
-            } else {
-              console.error(
-                `Recovery failed. Node ${log.node} is not available.`
-              );
-            }
+          if (node) {
+            recover(log, node, after1980Connection);
+          } else {
+            console.log(`Recovery failed. Node ${log.node} is not available.`);
           }
         }
       }
