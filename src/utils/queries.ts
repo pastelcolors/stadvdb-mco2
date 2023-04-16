@@ -7,17 +7,17 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { NextFunction, Request, Response } from "express";
 
-type Movie = {
+export type Movie = {
   id?: string;
   name: string;
   year: number;
-  rank: number;
-  actor1_first_name: string;
-  actor1_last_name: string;
-  actor2_first_name: string;
-  actor2_last_name: string;
-  actor3_first_name: string;
-  actor3_last_name: string;
+  rank?: number | null;
+  actor1_first_name?: string | null;
+  actor1_last_name?: string | null;
+  actor2_first_name?: string | null;
+  actor2_last_name?: string | null;
+  actor3_first_name?: string | null;
+  actor3_last_name?: string | null;
 };
 
 type Log = {
@@ -34,7 +34,7 @@ export type IsolationLevels =
   | "REPEATABLE READ"
   | "SERIALIZABLE";
 
-function getShard(movie: Movie): [Pool, Pool] {
+export function getShard(movie: Movie): [Pool, Pool] {
   if (movie.year < 1980) {
     return [centralNodePool, before1980NodePool];
   } else {
@@ -44,7 +44,7 @@ function getShard(movie: Movie): [Pool, Pool] {
 
 const CONNECTION_TIMEOUT = 10000;
 
-async function getConnection(
+export async function getConnection(
   pool: Pool,
   name: string,
   timeout: number = CONNECTION_TIMEOUT,
