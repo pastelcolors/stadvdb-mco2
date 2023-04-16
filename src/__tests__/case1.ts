@@ -35,18 +35,18 @@ async function testFetchMovie(mainConnection: PoolConnection, shardConnection: P
 
 describe('Case #1: Concurrent transactions in two or more nodes are reading the same data item', () => {
   test('Repeatable Read', async () => {
-    runIsolationLevelTest('REPEATABLE READ', testFetchMovie);
+    await runIsolationLevelTest('REPEATABLE READ', testFetchMovie);
   });
 
   test('Read Uncommitted', async () => {
-    runIsolationLevelTest('READ UNCOMMITTED', testFetchMovie);
+    await runIsolationLevelTest('READ UNCOMMITTED', testFetchMovie);
   });
   
   test('Read Committed', async () => {
-    runIsolationLevelTest('READ COMMITTED', testFetchMovie);
+    await runIsolationLevelTest('READ COMMITTED', testFetchMovie);
   });
 
   test('Serializable', async () => {
-    runIsolationLevelTest('SERIALIZABLE', testFetchMovie);
+    await runIsolationLevelTest('SERIALIZABLE', testFetchMovie);
   });
 });

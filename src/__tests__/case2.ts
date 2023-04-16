@@ -39,18 +39,18 @@ async function updateMovie(mainConnection: PoolConnection, shardConnection: Pool
 
 describe('Case #2: At least one transaction in the three nodes is writing (update / delete) and the other concurrent transactions are reading the same data item.', () => {
   test('Repeatable Read', async () => {
-    runIsolationLevelTest('REPEATABLE READ', updateMovie);
+    await runIsolationLevelTest('REPEATABLE READ', updateMovie);
   });
 
   test('Read Uncommitted', async () => {
-    runIsolationLevelTest('READ UNCOMMITTED', updateMovie);
+    await runIsolationLevelTest('READ UNCOMMITTED', updateMovie);
   });
   
   test('Read Committed', async () => {
-    runIsolationLevelTest('READ COMMITTED', updateMovie);
+    await runIsolationLevelTest('READ COMMITTED', updateMovie);
   });
 
   test('Serializable', async () => {
-    runIsolationLevelTest('SERIALIZABLE', updateMovie);
+    await runIsolationLevelTest('SERIALIZABLE', updateMovie);
   });
 });
