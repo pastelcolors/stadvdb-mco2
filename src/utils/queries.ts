@@ -117,12 +117,12 @@ export const recoverFromLogs = async (
 
   try {
     if (centralConnection) {
-      const [logs] = await centralConnection.query("SELECT * FROM logs");
+      const [logs] = await centralConnection.query(
+        "SELECT * FROM logs WHERE active = 1"
+      );
       if ((logs as Log[]).length > 0) {
         console.log("Executing recovery from logs...");
         for (let log of logs as Log[]) {
-          if (!log.active) continue;
-
           const node =
             log.node === "before1980" && before1980Connection
               ? before1980Connection
@@ -139,12 +139,12 @@ export const recoverFromLogs = async (
       }
     }
     if (before1980Connection) {
-      const [logs] = await before1980Connection.query("SELECT * FROM logs");
+      const [logs] = await before1980Connection.query(
+        "SELECT * FROM logs WHERE active = 1"
+      );
       if ((logs as Log[]).length > 0) {
         console.log("Executing recovery from logs...");
         for (let log of logs as Log[]) {
-          if (!log.active) continue;
-
           const node =
             log.node === "central" && centralConnection
               ? centralConnection
@@ -160,12 +160,12 @@ export const recoverFromLogs = async (
     }
 
     if (after1980Connection) {
-      const [logs] = await after1980Connection.query("SELECT * FROM logs");
+      const [logs] = await after1980Connection.query(
+        "SELECT * FROM logs WHERE active = 1"
+      );
       if ((logs as Log[]).length > 0) {
         console.log("Executing recovery from logs...");
         for (let log of logs as Log[]) {
-          if (!log.active) continue;
-
           const node =
             log.node === "central" && centralConnection
               ? centralConnection
@@ -185,12 +185,15 @@ export const recoverFromLogs = async (
     if (centralConnection) {
       // await centralConnection.query("DELETE FROM logs");
       await centralConnection.commit();
+      await centralConnection.release();
     }
     if (before1980Connection) {
       await before1980Connection.commit();
+      await before1980Connection.release();
     }
     if (after1980Connection) {
       await after1980Connection.commit();
+      await after1980Connection.release();
     }
     next();
   }

@@ -9,7 +9,6 @@ export const centralNodeConfig = {
   user: process.env.DB_USERNAME,
   password: process.env.DB_PASSWORD,
   database: process.env.CENTRAL_NODE_DB,
-  connectionLimit: 0,
 };
 
 export const before1980NodeConfig = {
@@ -18,7 +17,6 @@ export const before1980NodeConfig = {
   user: process.env.DB_USERNAME,
   password: process.env.DB_PASSWORD,
   database: process.env.NODE_2_DB,
-  connectionLimit: 0,
 };
 
 export const after1980NodeConfig = {
@@ -27,7 +25,6 @@ export const after1980NodeConfig = {
   user: process.env.DB_USERNAME,
   password: process.env.DB_PASSWORD,
   database: process.env.NODE_3_DB,
-  connectionLimit: 0,
 };
 
 export const NODE_LIST = {
