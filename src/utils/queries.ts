@@ -48,7 +48,7 @@ async function getConnection(
   pool: Pool,
   name: string,
   timeout: number = CONNECTION_TIMEOUT,
-  maxRetries: number = 3,
+  maxRetries: number = 1,
   retryInterval: number = 1000
 ): Promise<PoolConnection | null | undefined> {
   for (let i = 0; i < maxRetries; i++) {
@@ -62,7 +62,7 @@ async function getConnection(
       ]);
       return connection as PoolConnection;
     } catch (e) {
-      console.error(`Failed to connect to \${name} (attempt \${i + 1}):`, e);
+      console.error(`Failed to connect to ${name} (attempt ${i + 1}):`, e);
       if (i < maxRetries - 1) {
         await new Promise((resolve) => setTimeout(resolve, retryInterval));
       } else {
@@ -371,7 +371,7 @@ export const getMovieById = async (id: string) => {
 
     const results = [before1980Result, after1980Result];
     const movie = results.find(
-      (result: any) => result[0] && result[0].length > 0
+      (result: any) => result && result.length > 0
     ) || [null];
 
     return movie;
