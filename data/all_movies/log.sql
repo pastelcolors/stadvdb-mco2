@@ -26,7 +26,7 @@ CREATE TABLE `logs` (
   `id` int NOT NULL AUTO_INCREMENT,
   `operation` varchar(255) DEFAULT NULL,
   `node` varchar(255) DEFAULT NULL,
-  `value` varchar(255) DEFAULT NULL,
+  `value` MEDIUMTEXT DEFAULT NULL,
   `active` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

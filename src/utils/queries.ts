@@ -509,6 +509,7 @@ export const updateMovie = async (
         node: movie.year >= 1980 ? "after1980" : "before1980",
         value: JSON.stringify(movie),
       };
+
       await mainConnection.query("XA START ?;", logXid);
       await mainConnection.query("INSERT INTO logs SET ?", log);
       await mainConnection.query("XA END ?;", logXid);
@@ -524,7 +525,6 @@ export const updateMovie = async (
     throw error;
   } finally {
     if (mainConnection) mainConnection.release();
-
     if (shardConnection) shardConnection.release();
   }
 };
