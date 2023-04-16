@@ -36,9 +36,9 @@ async function updateAndReadMovie(mainConnection: PoolConnection, shardConnectio
 
   // Compare the movie names in the main node read result and the updated sample movie
   if (isolationLevel === "READ UNCOMMITTED") {
-    expect(mainReadResult[0].name).toBe(sampleMovie.name + " - Updated Main");
+    expect((mainReadResult as any).name).toBe(sampleMovie.name + " - Updated Main");
   } else {
-    expect(mainReadResult[0].name).not.toBe(sampleMovie.name + " - Updated Main");
+    expect((mainReadResult as any).name).not.toBe(sampleMovie.name + " - Updated Main");
   }
 
   return Promise.resolve();
