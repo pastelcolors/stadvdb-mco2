@@ -283,7 +283,7 @@ export const getMovies = async () => {
       : [null];
 
     // Combine and sort the results from both slave nodes
-    const combinedResult = [...before1980Result, ...after1980Result].sort((a, b) => b.year - a.year).slice(0, 10);
+    const combinedResult = [...before1980Result as Movie[], ...after1980Result as Movie[]].sort((a, b) => b.year - a.year).slice(0, 10);
     return combinedResult;
   } catch (e) {
     console.error("Failed to query slave nodes:", e);
@@ -301,8 +301,8 @@ export const getMovieById = async (id: string) => {
   if (centralConnection) {
     try {
       const [centralResult] = await centralConnection.query("SELECT * FROM movies WHERE id = ?", [id]);
-      if (centralResult.length > 0) {
-        return centralResult[0];
+      if ((centralResult as Movie[]).length > 0) {
+        return centralResult;
       }
     } catch (e) {
       console.error("Failed to query centralNodePool:", e);
@@ -325,7 +325,7 @@ export const getMovieById = async (id: string) => {
       : [null];
 
     const results = [before1980Result, after1980Result];
-    const [movie] = results.find((result) => result[0] && result[0].length > 0) || [null];
+    const movie = results.find((result: any) => result[0] && result[0].length > 0) || [null];
 
     return movie;
   } catch (e) {
