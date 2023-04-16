@@ -81,14 +81,23 @@ async function recover(
   switch (log.operation) {
     case "INSERT":
       console.log(`Recovering INSERT operation from ${log.node}...`);
+      console.log(
+        `Inserting movie to ${log.node}: ${movie.name} (${movie.year})`
+      );
       await node.query("INSERT INTO movies SET ?", movie);
       break;
     case "UPDATE":
       console.log(`Recovering UPDATE operation from ${log.node}...`);
+      console.log(
+        `Updating movie in ${log.node}: ${movie.name} (${movie.year})`
+      );
       await node.query("UPDATE movies SET ? WHERE id = ?", [movie, movie.id]);
       break;
     case "DELETE":
       console.log(`Recovering DELETE operation from ${log.node}...`);
+      console.log(
+        `Deleting movie in ${log.node}: ${movie.name} (${movie.year})`
+      );
       await node.query("DELETE FROM movies WHERE id = ?", [movie.id]);
       break;
   }
@@ -185,15 +194,15 @@ export const recoverFromLogs = async (
     if (centralConnection) {
       // await centralConnection.query("DELETE FROM logs");
       await centralConnection.commit();
-      await centralConnection.release();
+      centralConnection.release();
     }
     if (before1980Connection) {
       await before1980Connection.commit();
-      await before1980Connection.release();
+      before1980Connection.release();
     }
     if (after1980Connection) {
       await after1980Connection.commit();
-      await after1980Connection.release();
+      after1980Connection.release();
     }
     next();
   }
@@ -210,6 +219,11 @@ export const createMovie = async (
   const logXid = `log-${id}`;
 
   try {
+
+    if(!mainConnection && !shardConnection) {
+      throw new Error("No connection available");
+    }
+
     if (mainConnection) {
       await mainConnection.query(
         `SET TRANSACTION ISOLATION LEVEL ${isolationLevel};`
@@ -311,8 +325,8 @@ export const getMovies = async () => {
 
     // Combine and sort the results from both slave nodes
     const combinedResult = [
-      ...(before1980Result as Movie[]),
-      ...(after1980Result as Movie[]),
+      ...(before1980Result as Movie[] ?? []),
+      ...(after1980Result as Movie[] ?? []),
     ]
       .sort((a, b) => b.year - a.year)
       .slice(0, 10);
@@ -437,8 +451,8 @@ export const searchMovie = async (name: string) => {
       : [null];
 
     const combinedResult = [
-      ...(before1980Result as Movie[]),
-      ...(after1980Result as Movie[]),
+      ...(before1980Result as Movie[] ?? []),
+      ...(after1980Result as Movie[] ?? []),
     ]
       .sort((a, b) => b.year - a.year)
       .slice(0, 10);
