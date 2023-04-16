@@ -295,48 +295,49 @@ export const getMovies = async () => {
   return []; // Return an empty array if all connections failed
 };
 
-
 export const getMovieById = async (id: string) => {
-  const centralConnection = await getConnection(
-    centralNodePool,
-    "centralNodePool"
-  );
-  const before1980Connection = await getConnection(
-    before1980NodePool,
-    "before1980NodePool"
-  );
-  const after1980Connection = await getConnection(
-    after1980NodePool,
-    "after1980NodePool"
-  );
+  const centralConnection = await getConnection(centralNodePool, "centralNodePool");
+
+  if (centralConnection) {
+    try {
+      const [centralResult] = await centralConnection.query("SELECT * FROM movies WHERE id = ?", [id]);
+      if (centralResult.length > 0) {
+        return centralResult[0];
+      }
+    } catch (e) {
+      console.error("Failed to query centralNodePool:", e);
+    } finally {
+      centralConnection.release();
+    }
+  }
+
+  // Fallback to slave nodes if centralConnection failed
+  const before1980Connection = await getConnection(before1980NodePool, "before1980NodePool");
+  const after1980Connection = await getConnection(after1980NodePool, "after1980NodePool");
 
   try {
-    const centralResult = centralConnection
-      ? await centralConnection.query("SELECT * FROM movies WHERE id = ?", [id])
-      : [null];
-    const node2Result = before1980Connection
-      ? await before1980Connection.query("SELECT * FROM movies WHERE id = ?", [
-          id,
-        ])
-      : [null];
-    const node3Result = after1980Connection
-      ? await after1980Connection.query("SELECT * FROM movies WHERE id = ?", [
-          id,
-        ])
+    const [before1980Result] = before1980Connection
+      ? await before1980Connection.query("SELECT * FROM movies WHERE id = ?", [id])
       : [null];
 
-    const results = [centralResult, node2Result, node3Result];
-    const [movie] = results.find(
-      (result) => result[0] && (result[0] as []).length > 0
-    ) || [null];
+    const [after1980Result] = after1980Connection
+      ? await after1980Connection.query("SELECT * FROM movies WHERE id = ?", [id])
+      : [null];
+
+    const results = [before1980Result, after1980Result];
+    const [movie] = results.find((result) => result[0] && result[0].length > 0) || [null];
 
     return movie;
+  } catch (e) {
+    console.error("Failed to query slave nodes:", e);
   } finally {
-    if (centralConnection) centralConnection.release();
     if (before1980Connection) before1980Connection.release();
     if (after1980Connection) after1980Connection.release();
   }
+
+  return null; // Return null if all connections failed
 };
+
 
 export const searchMovie = async (name: string) => {
   const centralConnection = await getConnection(
