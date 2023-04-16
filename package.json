@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "case1test": "jest __tests__/case1.ts --detectOpenHandles --runInBand",
-    "case2test": "jest __tests__/case2.ts --detectOpenHandles --runInBand",
-    "case3test": "jest __tests__/case3.ts --detectOpenHandles --runInBand",
+    "case1test": "jest __tests__/case1.ts  --runInBand",
+    "case2test": "jest __tests__/case2.ts  --runInBand",
+    "case3test": "jest __tests__/case3.ts --runInBand",
     "dev": "nodemon ./src/app.ts",
     "start": "node ./dist/app.js",
     "build": "tsc"
