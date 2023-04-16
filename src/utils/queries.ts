@@ -188,7 +188,7 @@ export const createMovie = async (movie: Movie, isolationLevel: IsolationLevels)
   try {
     if (mainConnection) {
       await mainConnection.beginTransaction();
-      await mainConnection.query(`SET GLOBAL TRANSACTION ISOLATION LEVEL ${isolationLevel};`);
+      await mainConnection.query(`SET TRANSACTION ISOLATION LEVEL ${isolationLevel};`);
       await mainConnection.query("XA START ?;", id);
       await mainConnection.query("INSERT INTO movies SET ?", { id, ...movie });
       await mainConnection.query("XA END ?;", id);
@@ -208,7 +208,7 @@ export const createMovie = async (movie: Movie, isolationLevel: IsolationLevels)
 
     if (shardConnection) {
       await shardConnection.beginTransaction();
-      await shardConnection.query(`SET GLOBAL TRANSACTION ISOLATION LEVEL ${isolationLevel};`);
+      await shardConnection.query(`SET TRANSACTION ISOLATION LEVEL ${isolationLevel};`);
       await shardConnection.query("XA START ?;", id);
       await shardConnection.query("INSERT INTO movies SET ?", { id, ...movie });
       await shardConnection.query("XA END ?;", id);
