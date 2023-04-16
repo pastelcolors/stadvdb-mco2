@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   central_node:
-    image: mysql/mysql-cluster
+    image: mysql
     command: mysqld
     environment:
       - MYSQL_ROOT_PASSWORD=root
@@ -10,14 +10,12 @@ services:
       - MYSQL_USER=${DB_USERNAME}
       - MYSQL_PASSWORD=${DB_PASSWORD}
     volumes:
-      - ./my.ini:/etc/my.cnf
-      - ./config.ini:/etc/mysql-cluster.cnf
       - ./data/all_movies:/docker-entrypoint-initdb.d
     ports:
       - "3306:3306"
 
   node_2:
-    image: mysql/mysql-cluster
+    image: mysql
     command: mysqld
     environment:
       - MYSQL_ROOT_PASSWORD=root
@@ -25,15 +23,13 @@ services:
       - MYSQL_USER=${DB_USERNAME}
       - MYSQL_PASSWORD=${DB_PASSWORD}
     volumes:
-      - ./my.ini:/etc/my.cnf
-      - ./config.ini:/etc/mysql-cluster.cnf
       - ./data/movies_before_1980:/docker-entrypoint-initdb.d
 
     ports:
       - "3307:3306"
 
   node_3:
-    image: mysql/mysql-cluster
+    image: mysql
     command: mysqld
     environment:
       - MYSQL_ROOT_PASSWORD=root
@@ -41,8 +37,6 @@ services:
       - MYSQL_USER=${DB_USERNAME}
       - MYSQL_PASSWORD=${DB_PASSWORD}
     volumes:
-      - ./my.ini:/etc/my.cnf
-      - ./config.ini:/etc/mysql-cluster.cnf
       - ./data/movies_from_1980:/docker-entrypoint-initdb.d
     ports:
       - "3308:3306"
