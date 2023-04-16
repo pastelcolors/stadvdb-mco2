@@ -281,6 +281,15 @@ export const updateMovie = async (movie: Movie) => {
       await mainConnection.query("XA PREPARE ?;", movie.id);
       await mainConnection.query("XA COMMIT ?;", movie.id);
       await mainConnection.commit();
+    } else if (!mainConnection && shardConnection) {
+      const log = {
+        operation: "UPDATE",
+        node: "central",
+        value: JSON.stringify(movie),
+      };
+      await shardConnection.beginTransaction();
+      await shardConnection.query("INSERT INTO logs SET ?", log);
+      await shardConnection.commit();
     }
 
     if (shardConnection) {
@@ -293,6 +302,15 @@ export const updateMovie = async (movie: Movie) => {
       await shardConnection.query("XA PREPARE ?;", movie.id);
       await shardConnection.query("XA COMMIT ?;", movie.id);
       await shardConnection.commit();
+    } else if (!shardConnection && mainConnection) {
+      const log = {
+        operation: "UPDATE",
+        node: movie.year >= 1980 ? "after1980" : "before1980",
+        value: JSON.stringify(movie),
+      };
+      await mainConnection.beginTransaction();
+      await mainConnection.query("INSERT INTO logs SET ?", log);
+      await mainConnection.commit();
     }
 
     return movie;
