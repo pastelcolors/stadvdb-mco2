@@ -2,34 +2,21 @@ import { PoolConnection } from 'mysql2/promise';
 import { Movie } from '../utils/queries';
 import { runIsolationLevelTest } from './utils/runIsolationLevelTest';
 
-const sampleMovie: Movie = {
-  "id": "391b7277-d298-11ed-a5cb-00155d052813",
-  "name": "Good Shepherd, The",
-  "year": 2005,
-  "rank": null,
-  "actor1_first_name": "Robert",
-  "actor1_last_name": "De Niro",
-  "actor2_first_name": "Leonardo",
-  "actor2_last_name": "DiCaprio",
-  "actor3_first_name": null,
-  "actor3_last_name": null
-}
-
-async function updateMovie(mainConnection: PoolConnection, shardConnection: PoolConnection, isolationLevel: string) {
+async function updateMovie(mainConnection: PoolConnection, shardConnection: PoolConnection, isolationLevel: string, movie: Movie): Promise<void> {
   // Execute the update and read operations concurrently
   await Promise.all([
     mainConnection.query("UPDATE movies SET name = ? WHERE id = ?", [
-      sampleMovie.name + " - Updated",
-      sampleMovie.id,
+      movie.name + " - Updated",
+      movie.id,
     ]),
     shardConnection.query("SELECT * FROM movies WHERE id = ?", [
-      sampleMovie.id,
+      movie.id,
     ]).then(([shardReadResult]) => {
       // Compare the movie names in the shard node read result and the updated sample movie
       if (isolationLevel === "READ UNCOMMITTED") {
-        expect((shardReadResult as any).name).toBe(sampleMovie.name + " - Updated");
+        expect((shardReadResult as any).name).toBe(movie.name + " - Updated");
       } else {
-        expect((shardReadResult as any).name).not.toBe(sampleMovie.name + " - Updated");
+        expect((shardReadResult as any).name).not.toBe(movie.name + " - Updated");
       }
     }),
   ]);

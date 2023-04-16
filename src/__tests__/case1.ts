@@ -1,26 +1,12 @@
 import { PoolConnection } from 'mysql2/promise';
-import { Movie } from '../utils/queries';
 import { runIsolationLevelTest } from './utils/runIsolationLevelTest';
+import { Movie } from '../utils/queries';
 
-const sampleMovie: Movie = {
-  "id": "391b7277-d298-11ed-a5cb-00155d052813",
-  "name": "Good Shepherd, The",
-  "year": 2005,
-  "rank": null,
-  "actor1_first_name": "Robert",
-  "actor1_last_name": "De Niro",
-  "actor2_first_name": "Leonardo",
-  "actor2_last_name": "DiCaprio",
-  "actor3_first_name": null,
-  "actor3_last_name": null
-}
-
-async function testFetchMovie(mainConnection: PoolConnection, shardConnection: PoolConnection, isolationLevel: string): Promise<void> {
+async function testFetchMovie(mainConnection: PoolConnection, shardConnection: PoolConnection, isolationLevel: string, movie: Movie): Promise<void> {
   // Read the same movie in both transactions
-  const MOVIE_ID =  sampleMovie.id;
   const results = await Promise.all([
-    mainConnection.query('SELECT * FROM movies WHERE id = ?', MOVIE_ID),
-    shardConnection.query('SELECT * FROM movies WHERE id = ?', MOVIE_ID),
+    mainConnection.query('SELECT * FROM movies WHERE id = ?', movie.id),
+    shardConnection.query('SELECT * FROM movies WHERE id = ?', movie.id),
   ]);
 
   // Expect both transactions to be successful and return the same movie
