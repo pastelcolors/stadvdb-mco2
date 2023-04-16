@@ -195,6 +195,7 @@ export const createMovie = async (
   const mainConnection = await getConnection(mainPool, "mainPool");
   const shardConnection = await getConnection(shardPool, "shardPool");
   const id = uuidv4();
+  const logXid = `log-${id}`;
 
   try {
     if (mainConnection) {
@@ -206,18 +207,17 @@ export const createMovie = async (
       await mainConnection.query("XA END ?;", id);
       await mainConnection.query("XA PREPARE ?;", id);
       await mainConnection.query("XA COMMIT ?;", id);
-      await mainConnection.commit();
     } else if (!mainConnection && shardConnection) {
       const log = {
         operation: "INSERT",
         node: "central",
         value: JSON.stringify({ id, ...movie }),
       };
-      await shardConnection.query("XA START ?;", id);
+      await shardConnection.query("XA START ?;", logXid);
       await shardConnection.query("INSERT INTO logs SET ?", log);
-      await shardConnection.query("XA END ?;", id);
-      await shardConnection.query("XA PREPARE ?;", id);
-      await shardConnection.query("XA COMMIT ?;", id);
+      await shardConnection.query("XA END ?;", logXid);
+      await shardConnection.query("XA PREPARE ?;", logXid);
+      await shardConnection.query("XA COMMIT ?;", logXid);
     }
 
     if (shardConnection) {
@@ -229,18 +229,17 @@ export const createMovie = async (
       await shardConnection.query("XA END ?;", id);
       await shardConnection.query("XA PREPARE ?;", id);
       await shardConnection.query("XA COMMIT ?;", id);
-      // await shardConnection.commit();
     } else if (!shardConnection && mainConnection) {
       const log = {
         operation: "INSERT",
         node: movie.year >= 1980 ? "after1980" : "before1980",
         value: JSON.stringify({ id, ...movie }),
       };
-      await mainConnection.query("XA START ?;", id);
+      await mainConnection.query("XA START ?;", logXid);
       await mainConnection.query("INSERT INTO logs SET ?", log);
-      await mainConnection.query("XA END ?;", id);
-      await mainConnection.query("XA PREPARE ?;", id);
-      await mainConnection.query("XA COMMIT ?;", id);
+      await mainConnection.query("XA END ?;", logXid);
+      await mainConnection.query("XA PREPARE ?;", logXid);
+      await mainConnection.query("XA COMMIT ?;", logXid);
     }
 
     return { id, ...movie };
@@ -394,10 +393,10 @@ export const updateMovie = async (
   const [mainPool, shardPool] = getShard(movie);
   const mainConnection = await getConnection(mainPool, "mainPool");
   const shardConnection = await getConnection(shardPool, "shardPool");
+  const logXid = `log-${movie.id}`;
 
   try {
     if (mainConnection) {
-      await mainConnection.beginTransaction();
       await mainConnection.query(
         `SET TRANSACTION ISOLATION LEVEL ${IsolationLevel};`
       );
@@ -409,23 +408,20 @@ export const updateMovie = async (
       await mainConnection.query("XA END ?;", movie.id);
       await mainConnection.query("XA PREPARE ?;", movie.id);
       await mainConnection.query("XA COMMIT ?;", movie.id);
-      await mainConnection.commit();
     } else if (!mainConnection && shardConnection) {
       const log = {
         operation: "UPDATE",
         node: "central",
         value: JSON.stringify(movie),
       };
-      await shardConnection.beginTransaction();
-      await shardConnection.query(
-        `SET TRANSACTION ISOLATION LEVEL ${IsolationLevel};`
-      );
+      await shardConnection.query("XA START ?;", logXid);
       await shardConnection.query("INSERT INTO logs SET ?", log);
-      await shardConnection.commit();
+      await shardConnection.query("XA END ?;", logXid);
+      await shardConnection.query("XA PREPARE ?;", logXid);
+      await shardConnection.query("XA COMMIT ?;", logXid);
     }
 
     if (shardConnection) {
-      await shardConnection.beginTransaction();
       await shardConnection.query(
         `SET TRANSACTION ISOLATION LEVEL ${IsolationLevel};`
       );
@@ -444,19 +440,18 @@ export const updateMovie = async (
         node: movie.year >= 1980 ? "after1980" : "before1980",
         value: JSON.stringify(movie),
       };
-      await mainConnection.beginTransaction();
-      await mainConnection.query(
-        `SET TRANSACTION ISOLATION LEVEL ${IsolationLevel};`
-      );
+      await mainConnection.query("XA START ?;", logXid);
       await mainConnection.query("INSERT INTO logs SET ?", log);
-      await mainConnection.commit();
+      await mainConnection.query("XA END ?;", logXid);
+      await mainConnection.query("XA PREPARE ?;", logXid);
+      await mainConnection.query("XA COMMIT ?;", logXid);
     }
 
     return movie;
   } catch (error) {
-    if (mainConnection) await mainConnection.rollback();
-
-    if (shardConnection) await shardConnection.rollback();
+    if (mainConnection) await mainConnection.query("XA ROLLBACK ?;", movie.id);
+    if (shardConnection)
+      await shardConnection.query("XA ROLLBACK ?;", movie.id);
 
     throw error;
   } finally {
