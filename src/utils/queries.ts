@@ -28,6 +28,8 @@ type Log = {
   active: string;
 };
 
+export type IsolationLevels = 'READ UNCOMMITTED' | 'READ COMMITTED' | 'REPEATABLE READ' | 'SERIALIZABLE';
+
 function getShard(movie: Movie): [Pool, Pool] {
   if (movie.year < 1980) {
     return [centralNodePool, before1980NodePool];
@@ -169,7 +171,7 @@ export const recoverFromLogs = async (
   }
 };
 
-export const createMovie = async (movie: Movie) => {
+export const createMovie = async (movie: Movie, isolationLevel: IsolationLevels) => {
   const [mainPool, shardPool] = getShard(movie);
   const mainConnection = await getConnection(mainPool, "mainPool");
   const shardConnection = await getConnection(shardPool, "shardPool");
@@ -177,6 +179,8 @@ export const createMovie = async (movie: Movie) => {
 
   try {
     if (mainConnection) {
+      await mainConnection.beginTransaction();
+      await mainConnection.query(`SET GLOBAL TRANSACTION ISOLATION LEVEL ${isolationLevel};`);
       await mainConnection.query("XA START ?;", id);
       await mainConnection.query("INSERT INTO movies SET ?", { id, ...movie });
       await mainConnection.query("XA END ?;", id);
@@ -195,6 +199,8 @@ export const createMovie = async (movie: Movie) => {
     }
 
     if (shardConnection) {
+      await shardConnection.beginTransaction();
+      await shardConnection.query(`SET GLOBAL TRANSACTION ISOLATION LEVEL ${isolationLevel};`);
       await shardConnection.query("XA START ?;", id);
       await shardConnection.query("INSERT INTO movies SET ?", { id, ...movie });
       await shardConnection.query("XA END ?;", id);
@@ -356,13 +362,15 @@ export const searchMovie = async (name: string) => {
   }
 };
 
-export const updateMovie = async (movie: Movie) => {
+export const updateMovie = async (movie: Movie, IsolationLevel: IsolationLevels) => {
   const [mainPool, shardPool] = getShard(movie);
   const mainConnection = await getConnection(mainPool, "mainPool");
   const shardConnection = await getConnection(shardPool, "shardPool");
 
   try {
     if (mainConnection) {
+      await mainConnection.beginTransaction();
+      await mainConnection.query(`SET TRANSACTION ISOLATION LEVEL ${IsolationLevel};`);
       await mainConnection.query("XA START ?;", movie.id);
       await mainConnection.query("UPDATE movies SET ? WHERE id = ?", [
         movie,
@@ -379,11 +387,14 @@ export const updateMovie = async (movie: Movie) => {
         value: JSON.stringify(movie),
       };
       await shardConnection.beginTransaction();
+      await shardConnection.query(`SET TRANSACTION ISOLATION LEVEL ${IsolationLevel};`);
       await shardConnection.query("INSERT INTO logs SET ?", log);
       await shardConnection.commit();
     }
 
     if (shardConnection) {
+      await shardConnection.beginTransaction();
+      await shardConnection.query(`SET TRANSACTION ISOLATION LEVEL ${IsolationLevel};`);
       await shardConnection.query("XA START ?;", movie.id);
       await shardConnection.query("UPDATE movies SET ? WHERE id = ?", [
         movie,
@@ -400,6 +411,7 @@ export const updateMovie = async (movie: Movie) => {
         value: JSON.stringify(movie),
       };
       await mainConnection.beginTransaction();
+      await mainConnection.query(`SET TRANSACTION ISOLATION LEVEL ${IsolationLevel};`);
       await mainConnection.query("INSERT INTO logs SET ?", log);
       await mainConnection.commit();
     }
@@ -418,12 +430,21 @@ export const updateMovie = async (movie: Movie) => {
   }
 };
 
-export const deleteMovie = async (id: string) => {
+export const deleteMovie = async (id: string, isolationLevel: IsolationLevels) => {
   const centralConnection = await centralNodePool.getConnection();
   const before1980Connection = await before1980NodePool.getConnection();
   const after1980Connection = await after1980NodePool.getConnection();
 
   try {
+    await centralConnection.beginTransaction();
+    await before1980Connection.beginTransaction();
+    await after1980Connection.beginTransaction();
+
+    // Set isolation level
+    await centralConnection.query(`SET TRANSACTION ISOLATION LEVEL ${isolationLevel};`);
+    await before1980Connection.query(`SET TRANSACTION ISOLATION LEVEL ${isolationLevel};`);
+    await after1980Connection.query(`SET TRANSACTION ISOLATION LEVEL ${isolationLevel};`);
+
     // Start phase
     await centralConnection.query("XA START ?;", id);
     await before1980Connection.query("XA START ?;", id);

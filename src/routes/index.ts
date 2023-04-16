@@ -21,7 +21,6 @@ CREATE TABLE `movies` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 */
 
-export type ISOLATION_LEVELS = 'READ UNCOMMITTED' | 'READ COMMITTED' | 'REPEATABLE READ' | 'SERIALIZABLE';
 export type NODES = 'Central Node' | 'Before 1980 Node' | 'After 1980 Node';
 // Default Movie
 // Name: $1,000 Reward

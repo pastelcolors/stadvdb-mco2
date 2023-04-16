@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  IsolationLevels,
   createMovie,
   deleteMovie,
   getMovieById,
@@ -33,19 +34,22 @@ router.get("/movies", async (req, res) => {
 
 router.post("/movies", async (req, res) => {
   const movie = req.body;
-  const createdMovie = await createMovie(movie);
+  const isolationLevel = req.query.isolationLevel ?? "REPEATABLE READ";
+  const createdMovie = await createMovie(movie, isolationLevel as IsolationLevels);
   res.status(200).send(createdMovie);
 });
 
 router.put("/movies", async (req, res) => {
   const movie = req.body;
-  const updatedMovie = await updateMovie(movie);
+  const isolationLevel = req.query.isolationLevel ?? "REPEATABLE READ";
+  const updatedMovie = await updateMovie(movie, isolationLevel as IsolationLevels);
   res.status(200).send(updatedMovie);
 });
 
 router.delete("/movie/:id", async (req, res) => {
   const id = req.params.id;
-  const deleted = await deleteMovie(id);
+  const isolationLevel = req.query.isolationLevel ?? "REPEATABLE READ";
+  const deleted = await deleteMovie(id, isolationLevel as IsolationLevels);
   res.status(200).send(deleted);
 });
 
