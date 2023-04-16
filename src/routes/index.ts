@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { createConnection } from "mysql2/promise";
 import { NODE_LIST } from "../config/db";
-import Connection from "mysql2/typings/mysql/lib/Connection";
+import { IsolationLevels } from "../utils/queries";
 
 const router = Router();
 
@@ -35,7 +35,7 @@ const DEFAULT_MOVIE_ID = '37b34019-d298-11ed-a5cb-00155d052813';
 interface Log {
   status?: string;
   node: string;
-  isolationLevel: ISOLATION_LEVELS;
+  isolationLevel: IsolationLevels;
   body: any;
   timestamp?: Date;
 }
@@ -48,7 +48,7 @@ router.post('/case1', async (req, res) => {
   const log: Log[] = [];
 
   // Get isolation level set via query string
-  const ISOLATION_LEVEL_SELECTED = req.query.isolationLevel as ISOLATION_LEVELS ?? 'READ UNCOMMITTED';
+  const ISOLATION_LEVEL_SELECTED = req.query.isolationLevel as IsolationLevels ?? 'READ UNCOMMITTED';
   const MOVIE_ID = req.query.movieId ?? DEFAULT_MOVIE_ID;
 
   try {
@@ -127,7 +127,7 @@ router.post('/case2', async (req, res) => {
   const log: Log[] = [];
 
   // Get isolation level set via query string
-  const ISOLATION_LEVEL_SELECTED = req.query.isolationLevel as ISOLATION_LEVELS ?? 'READ UNCOMMITTED';
+  const ISOLATION_LEVEL_SELECTED = req.query.isolationLevel as IsolationLevels ?? 'READ UNCOMMITTED';
   const MOVIE_ID = req.query.movieId ?? DEFAULT_MOVIE_ID;
   const UPDATER_NODE: NODES = req.query.updaterNode as NODES ?? 'Central Node';
 
