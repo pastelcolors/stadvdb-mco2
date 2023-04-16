@@ -47,21 +47,31 @@ const CONNECTION_TIMEOUT = 10000;
 async function getConnection(
   pool: Pool,
   name: string,
-  timeout: number = CONNECTION_TIMEOUT
-): Promise<PoolConnection | null> {
-  try {
-    const connectionPromise = pool.getConnection();
-    return (await Promise.race([
-      connectionPromise,
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Connection timeout")), timeout)
-      ),
-    ])) as PoolConnection;
-  } catch (e) {
-    console.error(`Failed to connect to ${name}:`, e);
-    return null;
+  timeout: number = CONNECTION_TIMEOUT,
+  maxRetries: number = 3,
+  retryInterval: number = 1000
+): Promise<PoolConnection | null | undefined> {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const connectionPromise = pool.getConnection();
+      const connection = await Promise.race([
+        connectionPromise,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Connection timeout")), timeout)
+        ),
+      ]);
+      return connection as PoolConnection;
+    } catch (e) {
+      console.error(`Failed to connect to \${name} (attempt \${i + 1}):`, e);
+      if (i < maxRetries - 1) {
+        await new Promise((resolve) => setTimeout(resolve, retryInterval));
+      } else {
+        return null;
+      }
+    }
   }
 }
+
 
 async function recover(
   log: Log,
@@ -340,51 +350,55 @@ export const getMovieById = async (id: string) => {
 
 
 export const searchMovie = async (name: string) => {
-  const centralConnection = await getConnection(
-    centralNodePool,
-    "centralNodePool"
-  );
-  const before1980Connection = await getConnection(
-    before1980NodePool,
-    "before1980NodePool"
-  );
-  const after1980Connection = await getConnection(
-    after1980NodePool,
-    "after1980NodePool"
-  );
+  const centralConnection = await getConnection(centralNodePool, "centralNodePool");
+
+  if (centralConnection) {
+    try {
+      const [centralResult] = await centralConnection.query(
+        "SELECT * FROM movies WHERE name LIKE CONCAT('%', ?, '%') ORDER BY year DESC LIMIT 10",
+        [name]
+      );
+      if (centralResult.length > 0) {
+        return centralResult;
+      }
+    } catch (e) {
+      console.error("Failed to query centralNodePool:", e);
+    } finally {
+      centralConnection.release();
+    }
+  }
+
+  // Fallback to slave nodes if centralConnection failed
+  const before1980Connection = await getConnection(before1980NodePool, "before1980NodePool");
+  const after1980Connection = await getConnection(after1980NodePool, "after1980NodePool");
 
   try {
-    const centralResult = centralConnection
-      ? await centralConnection.query(
-          "SELECT * FROM movies WHERE name LIKE CONCAT('%', ?, '%') ORDER BY year DESC LIMIT 10",
-          [name]
-        )
-      : [null];
-    const node2Result = before1980Connection
+    const [before1980Result] = before1980Connection
       ? await before1980Connection.query(
           "SELECT * FROM movies WHERE name LIKE CONCAT('%', ?, '%') ORDER BY year DESC LIMIT 10",
           [name]
         )
       : [null];
-    const node3Result = after1980Connection
+
+    const [after1980Result] = after1980Connection
       ? await after1980Connection.query(
           "SELECT * FROM movies WHERE name LIKE CONCAT('%', ?, '%') ORDER BY year DESC LIMIT 10",
           [name]
         )
       : [null];
 
-    const results = [centralResult, node2Result, node3Result];
-    const [movie] = results.find(
-      (result) => result[0] && (result[0] as []).length > 0
-    ) || [null];
-
-    return movie;
+    const combinedResult = [...before1980Result, ...after1980Result].sort((a, b) => b.year - a.year).slice(0, 10);
+    return combinedResult;
+  } catch (e) {
+    console.error("Failed to query slave nodes:", e);
   } finally {
-    if (centralConnection) centralConnection.release();
     if (before1980Connection) before1980Connection.release();
     if (after1980Connection) after1980Connection.release();
   }
+
+  return []; // Return an empty array if all connections failed
 };
+
 
 export const updateMovie = async (
   movie: Movie,
