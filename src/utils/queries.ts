@@ -1,4 +1,4 @@
-import { Pool, PoolConnection } from "mysql2/promise";
+import { Pool, PoolConnection, RowDataPacket } from "mysql2/promise";
 import {
   after1980NodePool,
   before1980NodePool,
@@ -220,6 +220,53 @@ export const createMovie = async (movie: Movie) => {
   } finally {
     if (mainConnection) mainConnection.release();
     if (shardConnection) shardConnection.release();
+  }
+};
+
+export const getMovies = async (offset: number) => {
+  const centralConnection = await getConnection(
+    centralNodePool,
+    "centralNodePool"
+  );
+  const before1980Connection = await getConnection(
+    before1980NodePool,
+    "before1980NodePool"
+  );
+  const after1980Connection = await getConnection(
+    after1980NodePool,
+    "after1980NodePool"
+  );
+
+  try {
+    const [centralResult] = centralConnection
+      ? await centralConnection.query(
+          "SELECT * FROM movies ORDER BY year DESC LIMIT 10 OFFSET ?",
+          [offset]
+        )
+      : [null];
+    const [node2Result] = before1980Connection
+      ? await before1980Connection.query(
+          "SELECT * FROM movies ORDER BY year DESC LIMIT 10 OFFSET ?",
+          [offset]
+        )
+      : [null];
+    const [node3Result] = after1980Connection
+      ? await after1980Connection.query(
+          "SELECT * FROM movies ORDER BY year DESC LIMIT 10 OFFSET ?",
+          [offset]
+        )
+      : [null];
+
+    if (!centralResult && node2Result && node3Result) {
+      return (node3Result as []).concat(node2Result as []);
+    }
+    return centralResult ?? node2Result ?? node3Result ?? [];
+  } catch (err) {
+    console.error(err);
+  } finally {
+    if (centralConnection) centralConnection.release();
+    if (before1980Connection) before1980Connection.release();
+    if (after1980Connection) after1980Connection.release();
   }
 };
 
