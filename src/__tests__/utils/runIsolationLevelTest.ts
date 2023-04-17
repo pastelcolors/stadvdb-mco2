@@ -46,5 +46,6 @@ export async function runIsolationLevelTest(
 
     await mainConnection.release();
     await shardConnection.release();
+    await mainConnection2.release();
   }
 }
