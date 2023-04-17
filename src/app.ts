@@ -1,7 +1,7 @@
 import express from "express";
 
 import TestsRouter from "./routes";
-import AppRouter from "./routes/app.route"
+import AppRouter from "./routes/app.route";
 import { recoverFromLogs } from "./utils/queries";
 
 const app = express();

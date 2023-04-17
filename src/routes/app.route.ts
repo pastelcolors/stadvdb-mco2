@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   IsolationLevels,
+  aggregateRanks,
   createMovie,
   deleteMovie,
   getMovieById,
@@ -10,6 +11,14 @@ import {
 } from "../utils/queries";
 
 const router = Router();
+
+router.get("/movies/report/:agg", async (req, res) => {
+  const agg = req.params.agg ?? "";
+  console.log(`Getting report: ${agg}`);
+  const report = await aggregateRanks(agg as string);
+  console.log("Finished getting report");
+  res.status(200).send(report);
+});
 
 router.get("/movies/search", async (req, res) => {
   const search = req.query.search ?? "";

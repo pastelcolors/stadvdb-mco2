@@ -72,6 +72,82 @@ export async function getConnection(
   }
 }
 
+export const aggregateRanks = async (agg: string) => {
+  const centralConnection = await getConnection(
+    centralNodePool,
+    "centralNodePool"
+  );
+
+  let query;
+  switch (agg) {
+    case "avg":
+      query =
+        "SELECT `year`, AVG(`rank`) AS 'rank' FROM movies WHERE `rank` is not null GROUP BY `year` ORDER BY `year` DESC;";
+      break;
+    case "min":
+      query =
+        "SELECT `year`, MIN(`rank`) AS 'rank' FROM movies WHERE `rank` is not null GROUP BY `year` ORDER BY `year` DESC;";
+      break;
+    case "max":
+      query =
+        "SELECT `year`, MAX(`rank`) AS 'rank' FROM movies WHERE `rank` is not null GROUP BY `year` ORDER BY `year` DESC;";
+      break;
+    case "count":
+    default:
+      query =
+        "SELECT `year`, COUNT(*) AS num_movies FROM movies GROUP BY `year` ORDER BY `year` DESC;";
+      break;
+  }
+
+  if (centralConnection) {
+    try {
+      const centralResult = await centralConnection.query(query);
+      if (centralResult.length > 0) {
+        return centralResult[0];
+      }
+    } catch (e) {
+      console.error("Failed to query centralNodePool:", e);
+    } finally {
+      centralConnection.release();
+    }
+  }
+
+  // Fallback to slave nodes if centralConnection failed
+  const before1980Connection = await getConnection(
+    before1980NodePool,
+    "before1980NodePool"
+  );
+  const after1980Connection = await getConnection(
+    after1980NodePool,
+    "after1980NodePool"
+  );
+
+  try {
+    const [before1980Result] = before1980Connection
+      ? await before1980Connection.query(query, [])
+      : [null];
+
+    const [after1980Result] = after1980Connection
+      ? await after1980Connection.query(query, [])
+      : [null];
+
+    const combinedResult = [
+      ...((before1980Result as Movie[]) ?? []),
+      ...((after1980Result as Movie[]) ?? []),
+    ]
+      .sort((a, b) => b.year - a.year)
+      .slice(0, 10);
+    return combinedResult;
+  } catch (e) {
+    console.error("Failed to query slave nodes:", e);
+  } finally {
+    if (before1980Connection) before1980Connection.release();
+    if (after1980Connection) after1980Connection.release();
+  }
+
+  return []; // Return an empty array if all connections failed
+};
+
 async function recover(
   log: Log,
   node: PoolConnection,
@@ -479,7 +555,7 @@ export const updateMovie = async (
     if (!mainConnection && !shardConnection) {
       throw new Error("No connection available");
     }
-    
+
     if (mainConnection) {
       await mainConnection.query(
         `SET TRANSACTION ISOLATION LEVEL ${IsolationLevel};`

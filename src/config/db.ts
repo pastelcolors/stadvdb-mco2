@@ -4,7 +4,7 @@ import { Pool, createPool } from "mysql2/promise";
 dotenv.config();
 
 export const centralNodeConfig = {
-  host: "localhost",
+  host: process.env.CENTRAL_NODE_HOST,
   port: 3306,
   user: "tyrone",
   password: "123456",
@@ -22,8 +22,8 @@ export const centralNodeConfig2 = {
 };
 
 export const before1980NodeConfig = {
-  host: "localhost",
-  port: 3307,
+  host: process.env.NODE_2_HOST,
+  port: 3306,
   user: "tyrone",
   password: "123456",
   database: "movies_before_1980",
@@ -31,8 +31,8 @@ export const before1980NodeConfig = {
 };
 
 export const after1980NodeConfig = {
-  host: "localhost",
-  port: 3308,
+  host: process.env.NODE_3_HOST,
+  port: 3306,
   user: "tyrone",
   password: "123456",
   database: "movies_from_1980",
